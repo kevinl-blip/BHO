@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>BJEC 2026 – Ankünfte</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1c1f2a;
+    --card: #242838;
+    --accent: #3d7fff;
+    --green: #22c97a;
+    --yellow: #f5c842;
+    --red: #ff4f4f;
+    --text: #e8eaf0;
+    --muted: #7a80a0;
+    --border: #2e3350;
+    --radius: 14px;
+    --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding-bottom: 40px;
+  }
+
+  /* Header */
+  .header {
+    background: var(--surface);
+    padding: 56px 20px 16px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-title {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+  .header-sub {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  /* Progress bar */
+  .progress-wrap {
+    margin-top: 14px;
+    background: var(--border);
+    border-radius: 99px;
+    height: 6px;
+    overflow: hidden;
+  }
+  .progress-bar {
+    height: 100%;
+    background: var(--green);
+    border-radius: 99px;
+    transition: width 0.3s ease;
+  }
+  .progress-label {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    background: var(--surface);
+    padding: 0 20px 12px;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 130px;
+    z-index: 99;
+  }
+  .tab {
+    flex: 1;
+    padding: 9px 4px;
+    border-radius: 10px;
+    border: none;
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--card);
+    color: var(--muted);
+    transition: all 0.18s;
+  }
+  .tab.active {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  /* Day view */
+  .day { display: none; padding: 16px 16px 0; }
+  .day.active { display: block; }
+
+  /* Time group */
+  .time-group { margin-bottom: 8px; }
+  .time-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 10px 4px 4px;
+  }
+
+  /* Card */
+  .card {
+    background: var(--card);
+    border-radius: var(--radius);
+    margin-bottom: 8px;
+    border: 1.5px solid var(--border);
+    overflow: hidden;
+    transition: border-color 0.2s, opacity 0.2s;
+  }
+  .card.done {
+    border-color: var(--green);
+    opacity: 0.7;
+  }
+  .card.delayed {
+    border-color: var(--yellow);
+  }
+
+  .card-main {
+    display: flex;
+    align-items: center;
+    padding: 12px 14px;
+    gap: 12px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .check {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.18s;
+    background: transparent;
+  }
+  .card.done .check {
+    background: var(--green);
+    border-color: var(--green);
+  }
+  .check-icon { display: none; }
+  .card.done .check-icon { display: block; }
+
+  .card-info { flex: 1; min-width: 0; }
+  .card-top {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 3px;
+  }
+  .nation {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .flight {
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .card-bottom {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .pax {
+    font-size: 13px;
+    color: var(--text);
+    font-weight: 500;
+  }
+  .hotel-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 6px;
+    letter-spacing: 0.04em;
+  }
+  .hotel-gm { background: #1a2e4a; color: #6aabff; }
+  .hotel-ao { background: #2a1f3d; color: #b07fff; }
+
+  .delay-badge {
+    margin-left: auto;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--yellow);
+    white-space: nowrap;
+  }
+
+  /* Delay row */
+  .delay-row {
+    display: none;
+    padding: 0 14px 12px;
+    gap: 8px;
+    align-items: center;
+  }
+  .card.delay-open .delay-row { display: flex; }
+
+  .delay-label { font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .delay-input {
+    width: 80px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 15px;
+    font-weight: 600;
+    padding: 6px 10px;
+    text-align: center;
+    -webkit-appearance: none;
+  }
+  .delay-input:focus { outline: none; border-color: var(--yellow); }
+  .delay-save {
+    background: var(--yellow);
+    color: #1a1200;
+    border: none;
+    border-radius: 8px;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 7px 14px;
+    cursor: pointer;
+  }
+  .delay-clear {
+    background: transparent;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-family: var(--font);
+    font-size: 13px;
+    color: var(--muted);
+    padding: 6px 10px;
+    cursor: pointer;
+  }
+
+  .delay-btn {
+    margin-left: auto;
+    background: transparent;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    font-size: 18px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .card.delay-open .delay-btn { border-color: var(--yellow); color: var(--yellow); }
+  .card.delayed .delay-btn { color: var(--yellow); border-color: var(--yellow); }
+
+  /* VIP dot */
+  .vip-dot {
+    width: 7px; height: 7px;
+    background: var(--accent);
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* Summary row */
+  .summary {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    display: flex;
+    gap: 20px;
+  }
+  .summary-item { text-align: center; flex: 1; }
+  .summary-num { font-size: 22px; font-weight: 700; }
+  .summary-lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .s-total { color: var(--text); }
+  .s-done { color: var(--green); }
+  .s-delay { color: var(--yellow); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-title">BJEC Berlin 2026</div>
+  <div class="header-sub">Ankünfte BER</div>
+  <div class="progress-wrap">
+    <div class="progress-bar" id="progressBar" style="width:0%"></div>
+  </div>
+  <div class="progress-label">
+    <span id="progressText">0 abgehakt</span>
+    <span id="progressPct">0 %</span>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="showDay('fri')">Fr 19.6.</button>
+  <button class="tab" onclick="showDay('sat')">Sa 20.6.</button>
+</div>
+
+<div id="day-fri" class="day active"></div>
+<div id="day-sat" class="day"></div>
+
+<script>
+const DATA = {
+  fri: [
+    { id:'f1',  time:'08:35', nation:'NOR-01',      flight:'DY1100',   pax:5,  hotel:'gm', vip:false },
+    { id:'f2',  time:'08:50', nation:'SWE-01',      flight:'EJU5262',  pax:2,  hotel:'gm', vip:false },
+    { id:'f3',  time:'08:55', nation:'FRA-01',      flight:'AF1434',   pax:1,  hotel:'gm', vip:false },
+    { id:'f4',  time:'08:55', nation:'CYP-02',      flight:'LH4573',   pax:2,  hotel:'ao', vip:false },
+    { id:'f5',  time:'09:00', nation:'LTU-01',      flight:'FR3669',   pax:1,  hotel:'ao', vip:false },
+    { id:'f6',  time:'09:15', nation:'AZE-01',      flight:'TK1721',   pax:17, hotel:'gm', vip:false },
+    { id:'f7',  time:'09:45', nation:'ESP-03',      flight:'EJU7335',  pax:3,  hotel:'ao', vip:false },
+    { id:'f8',  time:'10:10', nation:'HUN-01',      flight:'FR197',    pax:6,  hotel:'gm', vip:false },
+    { id:'f9',  time:'10:20', nation:'GBR-01',      flight:'BA986',    pax:2,  hotel:'gm', vip:false },
+    { id:'f10', time:'10:35', nation:'ESP-04',      flight:'IB0781',   pax:1,  hotel:'gm', vip:false },
+    { id:'f11', time:'10:35', nation:'GRE-01',      flight:'A3820',    pax:2,  hotel:'gm', vip:false },
+    { id:'f12', time:'10:35', nation:'ESP-06',      flight:'IB781',    pax:1,  hotel:'gm', vip:false },
+    { id:'f13', time:'10:50', nation:'BEL-01',      flight:'SN2581',   pax:1,  hotel:'gm', vip:false },
+    { id:'f14', time:'11:10', nation:'EST-01',      flight:'FR2733',   pax:2,  hotel:'gm', vip:false },
+    { id:'f15', time:'11:10', nation:'MNE-02',      flight:'FR1579',   pax:3,  hotel:'gm', vip:false },
+    { id:'f16', time:'11:30', nation:'TUR-01',      flight:'VF57',     pax:12, hotel:'gm', vip:false },
+    { id:'f17', time:'11:35', nation:'CRO-01',      flight:'W62315',   pax:2,  hotel:'gm', vip:false },
+    { id:'f18', time:'11:35', nation:'KGZ-01',      flight:'W62315',   pax:1,  hotel:'ao', vip:false },
+    { id:'f19', time:'11:35', nation:'DJB-EJU',     flight:'W62315',   pax:1,  hotel:'gm', vip:true  },
+    { id:'f20', time:'11:45', nation:'GBR-01',      flight:'FR176',    pax:2,  hotel:'gm', vip:false },
+    { id:'f21', time:'11:50', nation:'AZE-01',      flight:'TK1729',   pax:1,  hotel:'gm', vip:false },
+    { id:'f22', time:'12:05', nation:'DJB-EJU',     flight:'LH1926',   pax:1,  hotel:'gm', vip:true  },
+    { id:'f23', time:'12:10', nation:'ESP-01',      flight:'FR227',    pax:1,  hotel:'gm', vip:false },
+    { id:'f24', time:'12:55', nation:'SUI-01',      flight:'LH184',    pax:4,  hotel:'gm', vip:false },
+    { id:'f25', time:'12:55', nation:'GER-02',      flight:'LH184',    pax:1,  hotel:'gm', vip:false },
+    { id:'f26', time:'13:00', nation:'IRT-01',      flight:'LH4064',   pax:1,  hotel:'gm', vip:false },
+    { id:'f27', time:'13:05', nation:'FIN-01',      flight:'AY1433',   pax:8,  hotel:'ao', vip:false },
+    { id:'f28', time:'13:20', nation:'EST-01',      flight:'BT821',    pax:6,  hotel:'gm', vip:false },
+    { id:'f29', time:'14:20', nation:'SWE-02',      flight:'D84505',   pax:1,  hotel:'gm', vip:false },
+    { id:'f30', time:'17:15', nation:'GBR-01',      flight:'FR2962',   pax:1,  hotel:'gm', vip:false },
+    { id:'f31', time:'17:20', nation:'TUR-01',      flight:'VF509',    pax:1,  hotel:'gm', vip:false },
+    { id:'f32', time:'17:20', nation:'DJB-EJU',     flight:'VF509',    pax:1,  hotel:'gm', vip:true  },
+    { id:'f33', time:'17:30', nation:'FRA-01',      flight:'AF1834',   pax:1,  hotel:'gm', vip:false },
+    { id:'f34', time:'17:30', nation:'FRA-02',      flight:'AF1834',   pax:15, hotel:'gm', vip:false },
+    { id:'f35', time:'17:30', nation:'DJB-EJU',     flight:'AF1834',   pax:1,  hotel:'gm', vip:true  },
+    { id:'f36', time:'18:15', nation:'ROU-01',      flight:'W64009',   pax:1,  hotel:'gm', vip:false },
+    { id:'f37', time:'18:15', nation:'SRB-03',      flight:'W64009',   pax:1,  hotel:'gm', vip:false },
+    { id:'f38', time:'19:00', nation:'SWE-02',      flight:'EW8221',   pax:2,  hotel:'gm', vip:false },
+    { id:'f39', time:'19:55', nation:'LAT-01',      flight:'BT213',    pax:1,  hotel:'gm', vip:false },
+    { id:'f40', time:'20:15', nation:'DJB-EJU',     flight:'W43109',   pax:1,  hotel:'gm', vip:true  },
+    { id:'f41', time:'21:00', nation:'GBR-01',      flight:'EZY2933',  pax:4,  hotel:'gm', vip:false },
+    { id:'f42', time:'21:55', nation:'REF-POL',     flight:'LO391',    pax:1,  hotel:'gm', vip:false },
+  ],
+  sat: [
+    { id:'s1', time:'07:40', nation:'LAT-01', flight:'BT211',   pax:2, hotel:'ao', vip:false },
+    { id:'s2', time:'08:05', nation:'LTU-01', flight:'FR1571',  pax:4, hotel:'gm', vip:false },
+    { id:'s3', time:'10:25', nation:'GBR-01', flight:'BA0990',  pax:2, hotel:'gm', vip:false },
+    { id:'s4', time:'10:35', nation:'POL-02', flight:'LO387',   pax:1, hotel:'ao', vip:false },
+    { id:'s5', time:'11:35', nation:'HUN-01', flight:'W62315',  pax:2, hotel:'gm', vip:false },
+    { id:'s6', time:'14:00', nation:'SWE-01', flight:'EW4600',  pax:3, hotel:'gm', vip:false },
+    { id:'s7', time:'14:45', nation:'GBR-01', flight:'FR1145',  pax:3, hotel:'gm', vip:false },
+  ]
+};
+
+const HOTEL_LABELS = { gm: 'Good Morning', ao: 'A&O Hostel' };
+
+// State
+let state = {};
+try { state = JSON.parse(localStorage.getItem('bjec2026_arrivals') || '{}'); } catch(e) {}
+
+function save() {
+  localStorage.setItem('bjec2026_arrivals', JSON.stringify(state));
+}
+
+function getState(id) {
+  return state[id] || { done: false, delay: null };
+}
+
+function groupByTime(items) {
+  const groups = {};
+  items.forEach(item => {
+    if (!groups[item.time]) groups[item.time] = [];
+    groups[item.time].push(item);
+  });
+  return groups;
+}
+
+function renderDay(dayKey) {
+  const items = DATA[dayKey];
+  const container = document.getElementById('day-' + dayKey);
+  const groups = groupByTime(items);
+
+  // Summary
+  const totalPax = items.reduce((a,i) => a + i.pax, 0);
+  const donePax = items.filter(i => getState(i.id).done).reduce((a,i) => a + i.pax, 0);
+  const doneCount = items.filter(i => getState(i.id).done).length;
+  const delayCount = items.filter(i => getState(i.id).delay).length;
+
+  let html = `<div class="summary">
+    <div class="summary-item"><div class="summary-num s-total">${items.length}</div><div class="summary-lbl">Gruppen</div></div>
+    <div class="summary-item"><div class="summary-num s-total">${totalPax}</div><div class="summary-lbl">Personen</div></div>
+    <div class="summary-item"><div class="summary-num s-done">${doneCount}</div><div class="summary-lbl">Abgehakt</div></div>
+    <div class="summary-item"><div class="summary-num s-delay">${delayCount}</div><div class="summary-lbl">Verspätet</div></div>
+  </div>`;
+
+  Object.keys(groups).forEach(time => {
+    html += `<div class="time-group"><div class="time-label">${time} Uhr</div>`;
+    groups[time].forEach(item => {
+      const st = getState(item.id);
+      const cardClass = [
+        'card',
+        st.done ? 'done' : '',
+        st.delay ? 'delayed' : '',
+      ].filter(Boolean).join(' ');
+      const hotelClass = item.hotel === 'gm' ? 'hotel-gm' : 'hotel-ao';
+      const delayText = st.delay ? `+${st.delay} min` : '';
+
+      html += `<div class="${cardClass}" id="card-${item.id}">
+        <div class="card-main" onclick="toggleDone('${item.id}','${dayKey}')">
+          <div class="check">
+            <svg class="check-icon" width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2.5 7L5.5 10L11.5 4" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="card-info">
+            <div class="card-top">
+              ${item.vip ? '<div class="vip-dot"></div>' : ''}
+              <span class="nation">${item.nation}</span>
+              <span class="flight">${item.flight}</span>
+            </div>
+            <div class="card-bottom">
+              <span class="pax">👤 ${item.pax}</span>
+              <span class="hotel-badge ${hotelClass}">${HOTEL_LABELS[item.hotel]}</span>
+              ${delayText ? `<span class="delay-badge">⏱ ${delayText}</span>` : ''}
+            </div>
+          </div>
+          <button class="delay-btn" onclick="toggleDelayRow(event,'${item.id}','${dayKey}')">⏱</button>
+        </div>
+        <div class="delay-row" id="delayrow-${item.id}">
+          <span class="delay-label">Verspätung</span>
+          <input class="delay-input" type="number" id="delinput-${item.id}" 
+            placeholder="min" value="${st.delay || ''}" min="1" max="999">
+          <button class="delay-save" onclick="saveDelay('${item.id}','${dayKey}')">OK</button>
+          ${st.delay ? `<button class="delay-clear" onclick="clearDelay('${item.id}','${dayKey}')">✕</button>` : ''}
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+
+  container.innerHTML = html;
+  updateProgress();
+}
+
+function toggleDone(id, dayKey) {
+  if (!state[id]) state[id] = { done: false, delay: null };
+  state[id].done = !state[id].done;
+  save();
+  renderDay(dayKey);
+  updateProgress();
+}
+
+function toggleDelayRow(e, id, dayKey) {
+  e.stopPropagation();
+  const card = document.getElementById('card-' + id);
+  card.classList.toggle('delay-open');
+  if (card.classList.contains('delay-open')) {
+    setTimeout(() => {
+      const input = document.getElementById('delinput-' + id);
+      if (input) input.focus();
+    }, 100);
+  }
+}
+
+function saveDelay(id, dayKey) {
+  const val = parseInt(document.getElementById('delinput-' + id).value);
+  if (!state[id]) state[id] = { done: false, delay: null };
+  state[id].delay = isNaN(val) || val <= 0 ? null : val;
+  save();
+  renderDay(dayKey);
+}
+
+function clearDelay(id, dayKey) {
+  if (!state[id]) state[id] = { done: false, delay: null };
+  state[id].delay = null;
+  save();
+  renderDay(dayKey);
+}
+
+function updateProgress() {
+  const allItems = [...DATA.fri, ...DATA.sat];
+  const total = allItems.length;
+  const done = allItems.filter(i => getState(i.id).done).length;
+  const pct = total ? Math.round(done/total*100) : 0;
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('progressText').textContent = `${done} von ${total} abgehakt`;
+  document.getElementById('progressPct').textContent = pct + ' %';
+}
+
+let currentDay = 'fri';
+function showDay(day) {
+  currentDay = day;
+  document.querySelectorAll('.day').forEach(d => d.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('day-' + day).classList.add('active');
+  document.querySelectorAll('.tab')[day === 'fri' ? 0 : 1].classList.add('active');
+}
+
+// Init
+renderDay('fri');
+renderDay('sat');
+updateProgress();
+</script>
+</body>
+</html>
