@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>BJEC 2026 – Ankünfte</title>
+<style>
+  :root{
+    --bg:#0f1117;--surface:#1c1f2a;--card:#242838;--accent:#3d7fff;
+    --green:#22c97a;--yellow:#f5c842;--text:#e8eaf0;--muted:#7a80a0;
+    --border:#2e3350;--radius:13px;
+    --font:-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:60px;}
+
+  .header{background:var(--surface);padding:50px 16px 13px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;}
+  .header-title{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:2px;}
+  .header-sub{font-size:20px;font-weight:700;}
+  .progress-wrap{margin-top:10px;background:var(--border);border-radius:99px;height:5px;overflow:hidden;}
+  .progress-bar{height:100%;background:var(--green);border-radius:99px;transition:width .3s;}
+  .progress-label{margin-top:5px;font-size:11px;color:var(--muted);display:flex;justify-content:space-between;}
+
+  .tabs{display:flex;background:var(--surface);padding:0 16px 10px;gap:6px;border-bottom:1px solid var(--border);position:sticky;top:116px;z-index:99;}
+  .tab{flex:1;padding:8px 2px;border-radius:9px;border:none;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;background:var(--card);color:var(--muted);transition:all .18s;}
+  .tab.active{background:var(--accent);color:#fff;}
+  .tab-d{background:#1a2e1a;color:#5dd67a;}
+  .tab-d.active{background:#1e6b3a;color:#fff;}
+
+  .page{display:none;padding:12px 12px 0;}
+  .page.active{display:block;}
+  .drivers-page{display:none;padding:12px;}
+  .drivers-page.active{display:block;}
+
+  .summary{background:var(--surface);border-radius:var(--radius);padding:11px 14px;margin-bottom:12px;display:flex;gap:6px;}
+  .summary-item{text-align:center;flex:1;}
+  .summary-num{font-size:19px;font-weight:700;}
+  .summary-lbl{font-size:10px;color:var(--muted);margin-top:1px;}
+  .s-green{color:var(--green);} .s-yellow{color:var(--yellow);}
+
+  /* Bus block */
+  .bus-block{margin-bottom:14px;}
+  .bus-header{
+    display:flex;align-items:flex-start;gap:8px;padding:10px 12px;
+    background:var(--surface);border-radius:10px 10px 0 0;
+    border:1.5px solid var(--border);border-bottom:none;
+  }
+  .bus-header.all-done{background:#0d2a1a;border-color:var(--green);}
+  .bus-header-info{flex:1;min-width:0;}
+  .bus-top{display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap;}
+  .bus-depart{font-size:17px;font-weight:800;}
+  .bus-vehicle{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;background:#1e2d1e;color:#5dd67a;white-space:nowrap;}
+  .bus-vehicle.vip{background:#1a2440;color:#6aabff;}
+  .bus-progress{font-size:11px;font-weight:700;white-space:nowrap;}
+  .bus-progress.done{color:var(--green);}
+  .bus-progress.partial{color:var(--yellow);}
+  .bus-driver-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .bus-driver-name{font-size:13px;font-weight:600;}
+  .bus-phone{font-size:12px;color:var(--accent);text-decoration:none;font-weight:600;padding:2px 7px;background:#1a2440;border-radius:6px;white-space:nowrap;}
+  .bus-phone-add{font-size:11px;color:var(--muted);padding:2px 6px;border-radius:6px;border:1px dashed var(--border);cursor:pointer;white-space:nowrap;}
+
+  /* Phone input row under bus header */
+  .bus-phone-row{
+    display:none;padding:8px 12px;gap:8px;align-items:center;
+    background:var(--surface);
+    border-left:1.5px solid var(--border);border-right:1.5px solid var(--border);
+  }
+  .bus-phone-row.open{display:flex;}
+
+  /* Nation card */
+  .nation-card{
+    background:var(--card);
+    border-left:1.5px solid var(--border);border-right:1.5px solid var(--border);border-bottom:1.5px solid var(--border);
+    padding:10px 12px;display:flex;align-items:flex-start;gap:10px;
+    cursor:pointer;user-select:none;transition:background .15s;
+  }
+  .nation-card:last-of-type{border-radius:0 0 10px 10px;}
+  .nation-card.done{background:#0d1f12;}
+  .bus-block.all-done .nation-card{border-left-color:var(--green);border-right-color:var(--green);border-bottom-color:var(--green);}
+  .bus-block.all-done .bus-header{border-color:var(--green);}
+
+  .nc-check{width:24px;height:24px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .18s;margin-top:2px;}
+  .nation-card.done .nc-check{background:var(--green);border-color:var(--green);}
+  .nc-check-icon{display:none;}
+  .nation-card.done .nc-check-icon{display:block;}
+
+  .nc-info{flex:1;min-width:0;}
+
+  /* Arrival time + name row */
+  .nc-top{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+  .nc-arrive{font-size:16px;font-weight:800;color:var(--text);white-space:nowrap;}
+  .nc-name{font-size:14px;font-weight:700;color:var(--text);}
+  .nc-flight{font-size:11px;color:var(--muted);}
+
+  .nc-mid{display:flex;align-items:center;gap:8px;margin-bottom:3px;flex-wrap:wrap;}
+  .nc-pax{font-size:12px;color:var(--text);font-weight:500;}
+  .nc-cotravel{font-size:11px;color:var(--muted);}
+
+  /* Note preview */
+  .nc-note-preview{font-size:11px;color:var(--yellow);margin-top:2px;font-style:italic;}
+
+  /* badges */
+  .nc-delay-badge{font-size:11px;font-weight:700;color:var(--yellow);}
+
+  /* Action buttons */
+  .nc-actions{display:flex;flex-direction:column;gap:5px;flex-shrink:0;}
+  .nc-btn{
+    background:transparent;border:1.5px solid var(--border);border-radius:7px;
+    color:var(--muted);font-size:13px;width:28px;height:28px;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+  .nc-btn.active-delay{border-color:var(--yellow);color:var(--yellow);}
+  .nc-btn.active-note{border-color:var(--yellow);color:var(--yellow);}
+
+  /* Expandable rows below each nation card */
+  .nc-expand{
+    display:none;
+    border-left:1.5px solid var(--border);border-right:1.5px solid var(--border);border-bottom:1.5px solid var(--border);
+    background:var(--card);padding:8px 12px 10px;gap:8px;align-items:center;
+  }
+  .nc-expand.open{display:flex;}
+  .bus-block.all-done .nc-expand{border-left-color:var(--green);border-right-color:var(--green);border-bottom-color:var(--green);}
+
+  .nc-note-expand{
+    display:none;
+    border-left:1.5px solid var(--border);border-right:1.5px solid var(--border);border-bottom:1.5px solid var(--border);
+    background:var(--card);padding:8px 12px 10px;
+  }
+  .nc-note-expand.open{display:flex;flex-direction:column;gap:6px;}
+
+  .exp-label{font-size:12px;color:var(--muted);white-space:nowrap;}
+  .exp-input{width:75px;background:var(--surface);border:1.5px solid var(--border);border-radius:7px;color:var(--text);font-family:var(--font);font-size:14px;font-weight:600;padding:5px 8px;text-align:center;-webkit-appearance:none;}
+  .exp-input:focus{outline:none;border-color:var(--yellow);}
+  .note-input{width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:7px;color:var(--text);font-family:var(--font);font-size:13px;padding:7px 10px;resize:none;-webkit-appearance:none;}
+  .note-input:focus{outline:none;border-color:var(--yellow);}
+  .exp-row{display:flex;gap:8px;align-items:center;}
+  .btn-ok{background:var(--accent);color:#fff;border:none;border-radius:7px;font-family:var(--font);font-size:13px;font-weight:700;padding:6px 13px;cursor:pointer;}
+  .btn-clr{background:transparent;border:1.5px solid var(--border);border-radius:7px;font-family:var(--font);font-size:12px;color:var(--muted);padding:5px 9px;cursor:pointer;}
+
+  /* ph input */
+  .ph-input{flex:1;background:var(--bg);border:1.5px solid var(--accent);border-radius:7px;color:var(--text);font-family:var(--font);font-size:14px;padding:6px 10px;-webkit-appearance:none;}
+  .ph-input:focus{outline:none;}
+
+  /* Drivers */
+  .driver-card{background:var(--card);border-radius:var(--radius);border:1.5px solid var(--border);margin-bottom:10px;padding:13px;}
+  .dc-name{font-size:15px;font-weight:700;margin-bottom:2px;}
+  .dc-vehicle{font-size:11px;color:var(--muted);margin-bottom:6px;}
+  .dc-plate{font-size:12px;font-weight:700;color:var(--yellow);margin-bottom:2px;}
+  .dc-desc{font-size:11px;color:var(--muted);margin-bottom:8px;font-style:italic;}
+  .dc-row{display:flex;align-items:center;gap:8px;}
+  .dc-phone-link{font-size:15px;font-weight:700;color:var(--accent);text-decoration:none;flex:1;}
+  .dc-phone-empty{font-size:13px;color:var(--muted);flex:1;}
+  .dc-edit{background:var(--surface);border:1.5px solid var(--border);border-radius:7px;color:var(--muted);font-family:var(--font);font-size:12px;padding:5px 10px;cursor:pointer;}
+  .dc-input-row{display:none;margin-top:10px;flex-direction:column;gap:8px;}
+  .dc-editing .dc-input-row{display:flex;}
+  .dc-input-group{display:flex;gap:8px;align-items:center;}
+  .dc-input-label{font-size:11px;color:var(--muted);white-space:nowrap;width:90px;}
+  .dc-input{flex:1;background:var(--surface);border:1.5px solid var(--accent);border-radius:7px;color:var(--text);font-family:var(--font);font-size:14px;padding:6px 10px;-webkit-appearance:none;}
+  .dc-input:focus{outline:none;}
+  .dc-textarea{flex:1;background:var(--surface);border:1.5px solid var(--accent);border-radius:7px;color:var(--text);font-family:var(--font);font-size:13px;padding:6px 10px;resize:none;-webkit-appearance:none;}
+  .dc-textarea:focus{outline:none;}
+  /* Plate + desc on bus header */
+  .bus-plate{font-size:11px;font-weight:700;color:var(--yellow);}
+  .bus-desc{font-size:11px;color:var(--muted);font-style:italic;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-title">BJEC Berlin 2026</div>
+  <div class="header-sub">Ankünfte BER</div>
+  <div style="font-size:10px;color:var(--muted);margin-top:3px;">Version 1.5 · Stand 19.06.2026 10:30</div>
+  <div class="progress-wrap"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
+  <div class="progress-label"><span id="progressText">0 abgehakt</span><span id="progressPct">0 %</span></div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('fri')">Fr 19.6.</button>
+  <button class="tab" onclick="showTab('sat')">Sa 20.6.</button>
+  <button class="tab tab-d" onclick="showTab('drivers')">👤 Fahrer</button>
+</div>
+
+<div id="page-fri" class="page active"></div>
+<div id="page-sat" class="page"></div>
+<div id="page-drivers" class="drivers-page"></div>
+
+<script>
+const DRIVERS = {
+  anna:    {name:'Anna Rafaevitch',   vehicle:'VIP',                 phone:'+491795094009'},
+  fabian:  {name:'Fabian Hahl',       vehicle:'Linienbus',           phone:'+491739322588'},
+  daniel:  {name:'Daniel Dobromyslo', vehicle:'Kleinbus Schimmel 1', phone:'+4917632446343'},
+  stuwe:   {name:'Fahrer (Stuwe)',    vehicle:'Bus Stuwe 2',         phone:''},
+  axel:    {name:'Axel Stuwe',        vehicle:'Bus Stuwe 1',         phone:'+491722554161'},
+  tim:     {name:'Tim Zachow',        vehicle:'Kleinbus Schimmel 2', phone:'+491716524466'},
+  jochen:  {name:'Jochen Zimmer',     vehicle:'Kleinbus (Lasse)',    phone:'+491735817344'},
+  marco:   {name:'Marco Föllen',      vehicle:'Kleinbus Schimmel 1', phone:'+491608735217'},
+  ramon:   {name:'Ramon Krysteck',    vehicle:'Kleinbus Schimmel 1', phone:'+491726596213'},
+  ulan:    {name:'Ulan Nyshanov',     vehicle:'Kleinbus Schimmel 2', phone:'+491794567747'},
+  martin:  {name:'Martin Willkat',    vehicle:'Kleinbus Schimmel 1', phone:'+491731545396'},
+  anika:   {name:'Anika Freese',      vehicle:'Volleyballbus',       phone:'+4917670747235'},
+  peter:   {name:'Peter Branse',      vehicle:'Bus Stuwe 2 (Fabian)',phone:'+491725220999'},
+  michelle:{name:'Michelle Goschin',  vehicle:'Kleinbus Schimmel 1', phone:''},
+};
+
+const GROUPS = {
+  fri:[
+    // Fabian · Linienbus · Abfahrt 09:15
+    {gid:'fg1',departTime:'09:15',driver:'fabian',vehicle:'Linienbus',vip:false,nations:[
+      {id:'f01',name:'NOR-01',arrive:'08:35',pax:5, flight:'DY1100'},
+      {id:'f02',name:'SWE-01',arrive:'08:50',pax:2, flight:'EJU5262'},
+      {id:'f03',name:'FRA-01',arrive:'08:55',pax:1, flight:'AF1434'},
+      {id:'f04',name:'CYP-02',arrive:'08:55',pax:2, flight:'LH4573'},
+      {id:'f05',name:'LTU-01',arrive:'09:00',pax:1, flight:'FR3669'},
+      {id:'f06',name:'AZE-01',arrive:'09:15',pax:17,flight:'TK1721'},
+    ]},
+    // Daniel · Kleinbus Schimmel 1 · Abfahrt 10:20
+    {gid:'fg1b',departTime:'10:20',driver:'daniel',vehicle:'Kleinbus Schimmel 1',vip:false,nations:[
+      {id:'f07',name:'HUN-01',arrive:'10:10',pax:6,flight:'FR197'},
+      {id:'f11',name:'GBR-01',arrive:'10:20',pax:2,flight:'BA986'},
+    ]},
+    // Fabian · Kleinbus (Lasse) · Abfahrt 10:50
+    {gid:'fg2',departTime:'10:50',driver:'jochen',vehicle:'Kleinbus (Lasse)',vip:false,nations:[
+      {id:'f08',name:'ESP-03',arrive:'09:45',pax:3,flight:'EJU7335'},
+      {id:'f10',name:'ESP-04',arrive:'10:35',pax:1,flight:'IB0781'},
+      {id:'f09',name:'GRE-01',arrive:'10:35',pax:2,flight:'A3820'},
+      {id:'f12',name:'ESP-06',arrive:'10:35',pax:1,flight:'IB781'},
+      {id:'f13',name:'BEL-01',arrive:'10:50',pax:1,flight:'SN2581'},
+    ]},
+    // Anna · VIP · Abfahrt 12:00
+    {gid:'fg5',departTime:'12:00',driver:'anna',vehicle:'VIP',vip:true,nations:[
+      {id:'f19a',name:'DJB-EJU',arrive:'11:35',pax:1,flight:'W62315'},
+      {id:'f22', name:'DJB-EJU',arrive:'12:05',pax:1,flight:'LH1926'},
+    ]},
+    // Axel · Bus Stuwe 1 · Abfahrt 12:15
+    {gid:'fg6',departTime:'12:15',driver:'axel',vehicle:'Bus Stuwe 1',vip:false,nations:[
+      {id:'f14',name:'EST-01', arrive:'11:10',pax:2, flight:'FR2733'},
+      {id:'f15',name:'MNE-02', arrive:'11:10',pax:3, flight:'FR1579'},
+      {id:'f16',name:'TUR-01', arrive:'11:30',pax:12,flight:'VF57'},
+      {id:'f17',name:'CRO-01', arrive:'11:35',pax:2, flight:'W62315'},
+      {id:'f18',name:'KGZ-01', arrive:'11:35',pax:1, flight:'W62315'},
+      {id:'f20',name:'GBR-01', arrive:'11:45',pax:2, flight:'FR176'},
+      {id:'f21',name:'AZE-01', arrive:'11:50',pax:1, flight:'TK1729'},
+      {id:'f23',name:'ESP-01', arrive:'12:10',pax:1, flight:'FR227'},
+    ]},
+    // Ramon · Kleinbus Schimmel 1 · Abfahrt 13:00
+    {gid:'fg7',departTime:'13:00',driver:'ramon',vehicle:'Kleinbus Schimmel 1',vip:false,nations:[
+      {id:'f24',name:'SUI-01', arrive:'12:55',pax:4,flight:'LH184'},
+      {id:'f25',name:'GER-02', arrive:'12:55',pax:1,flight:'LH184'},
+      {id:'f26',name:'IRT-01', arrive:'13:00',pax:1,flight:'LH4064'},
+    ]},
+    // Jochen · Kleinbus (Lasse) · Abfahrt 13:05
+    {gid:'fg7b',departTime:'13:05',driver:'jochen',vehicle:'Kleinbus (Lasse)',vip:false,nations:[
+      {id:'f27',name:'FIN-01', arrive:'13:05',pax:8,flight:'AY1433'},
+    ]},
+    // Tim · Kleinbus Schimmel 2 · Abfahrt 14:20
+    {gid:'fg7c',departTime:'14:20',driver:'tim',vehicle:'Kleinbus Schimmel 2',vip:false,nations:[
+      {id:'f28',name:'EST-01', arrive:'13:20',pax:6,flight:'BT821'},
+      {id:'f29',name:'SWE-02', arrive:'14:20',pax:1,flight:'D84505'},
+    ]},
+    // Anna · VIP · Abfahrt 17:30
+    {gid:'fg9',departTime:'17:30',driver:'anna',vehicle:'VIP',vip:true,nations:[
+      {id:'f32',name:'DJB-EJU',arrive:'17:20',pax:1,flight:'VF509'},
+      {id:'f35',name:'DJB-EJU',arrive:'17:30',pax:1,flight:'AF1834'},
+    ]},
+    // Axel · Bus Stuwe 1 · Abfahrt 18:00
+    {gid:'fg10',departTime:'18:00',driver:'axel',vehicle:'Bus Stuwe 1',vip:false,nations:[
+      {id:'f30',name:'GBR-01', arrive:'17:15',pax:1, flight:'FR2962'},
+      {id:'f31',name:'TUR-01', arrive:'17:20',pax:1, flight:'VF509'},
+      {id:'f33',name:'FRA-01', arrive:'17:30',pax:1, flight:'AF1834'},
+      {id:'f34',name:'FRA-02', arrive:'17:30',pax:15,flight:'AF1834'},
+      {id:'f36',name:'ROU-01', arrive:'18:15',pax:1, flight:'W64009'},
+      {id:'f37',name:'SRB-03', arrive:'18:15',pax:1, flight:'W64009'},
+    ]},
+    // Martin · Kleinbus Schimmel 1 · Abfahrt 19:50
+    {gid:'fg11',departTime:'19:50',driver:'martin',vehicle:'Kleinbus Schimmel 1',vip:false,nations:[
+      {id:'f38',name:'SWE-02',arrive:'19:00',pax:2,flight:'EW8221'},
+      {id:'f39',name:'LAT-01',arrive:'19:55',pax:1,flight:'BT213'},
+    ]},
+    // Anna · VIP · Abfahrt 20:15
+    {gid:'fg13',departTime:'20:15',driver:'anna',vehicle:'VIP',vip:true,nations:[
+      {id:'f41',name:'DJB-EJU',arrive:'20:15',pax:1,flight:'W43109'},
+    ]},
+    // Ulan · Kleinbus Schimmel 2 · Abfahrt 21:45
+    {gid:'fg14',departTime:'21:45',driver:'ulan',vehicle:'Kleinbus Schimmel 2',vip:false,nations:[
+      {id:'f42',name:'GBR-01', arrive:'21:00',pax:4,flight:'EZY2933'},
+      {id:'f43',name:'REF-POL',arrive:'21:55',pax:1,flight:'LO391'},
+    ]},
+  ],
+  sat:[
+    {gid:'sg1',departTime:'08:20',driver:'marco',vehicle:'Kleinbus Schimmel 1',vip:false,nations:[
+      {id:'s01',name:'LTU-01',arrive:'08:05',pax:4,flight:'FR1571'},
+      {id:'s02',name:'LAT-01',arrive:'07:40',pax:2,flight:'BT211'},
+    ]},
+    {gid:'sg2',departTime:'11:30',driver:'ulan',vehicle:'Kleinbus Schimmel 2',vip:false,nations:[
+      {id:'s03',name:'HUN-01',arrive:'11:35',pax:2,flight:'W62315'},
+      {id:'s04',name:'GBR-01',arrive:'10:25',pax:2,flight:'BA0990'},
+      {id:'s05',name:'POL-02',arrive:'10:35',pax:1,flight:'LO387'},
+    ]},
+    {gid:'sg3',departTime:'14:45',driver:'daniel',vehicle:'Volleyballbus',vip:false,nations:[
+      {id:'s06',name:'SWE-01',arrive:'14:00',pax:3,flight:'EW4600'},
+      {id:'s07',name:'GBR-01',arrive:'14:45',pax:3,flight:'FR1145'},
+    ]},
+  ]
+};
+
+let state  = {};
+let phones = {};
+let vehicleInfo = {};
+try { state       = JSON.parse(localStorage.getItem('bjec26_state')  || '{}'); } catch(e){}
+try { phones      = JSON.parse(localStorage.getItem('bjec26_phones') || '{}'); } catch(e){}
+try { vehicleInfo = JSON.parse(localStorage.getItem('bjec26_vi')     || '{}'); } catch(e){}
+function saveState()  { localStorage.setItem('bjec26_state',  JSON.stringify(state));  }
+function savePhones() { localStorage.setItem('bjec26_phones', JSON.stringify(phones)); }
+function saveVI()     { localStorage.setItem('bjec26_vi',     JSON.stringify(vehicleInfo)); }
+function getNS(id)   { return state[id] || {done:false,delay:null,note:''}; }
+function getPhone(k) { return phones[k] || (DRIVERS[k] && DRIVERS[k].phone) || ''; }
+
+function renderDay(dayKey) {
+  const groups = GROUPS[dayKey];
+  const container = document.getElementById('page-'+dayKey);
+  const allN   = groups.flatMap(g=>g.nations);
+  const doneN  = allN.filter(n=>getNS(n.id).done).length;
+  const delayN = allN.filter(n=>getNS(n.id).delay).length;
+  const totalP = allN.reduce((a,n)=>a+n.pax,0);
+
+  let html = `<div class="summary">
+    <div class="summary-item"><div class="summary-num">${allN.length}</div><div class="summary-lbl">Gruppen</div></div>
+    <div class="summary-item"><div class="summary-num">${totalP}</div><div class="summary-lbl">Personen</div></div>
+    <div class="summary-item"><div class="summary-num s-green">${doneN}</div><div class="summary-lbl">Angekommen</div></div>
+    <div class="summary-item"><div class="summary-num s-yellow">${delayN}</div><div class="summary-lbl">Verspätet</div></div>
+  </div>`;
+
+  groups.forEach(g => {
+    const driver    = DRIVERS[g.driver] || {name:g.driver,vehicle:g.vehicle};
+    const phone     = getPhone(g.driver);
+    const doneCount = g.nations.filter(n=>getNS(n.id).done).length;
+    const total     = g.nations.length;
+    const allDone   = doneCount===total;
+    const progCls   = allDone?'done':doneCount>0?'partial':'';
+    const progTxt   = allDone?'✓ Alle da':`${doneCount}/${total}`;
+    const vcls      = g.vip?'bus-vehicle vip':'bus-vehicle';
+    const blkCls    = allDone?'bus-block all-done':'bus-block';
+    const hdrCls    = allDone?'bus-header all-done':'bus-header';
+
+    const phoneEl = phone
+      ? `<a class="bus-phone" href="tel:${phone}" onclick="event.stopPropagation()">📞 ${phone}</a>`
+      : `<span class="bus-phone-add" onclick="openBusPhone(event,'${g.gid}')">+ Nummer</span>`;
+
+    const vi = getVehicleInfo(g.driver);
+    const plateEl = vi.plate ? `<span class="bus-plate">🔖 ${vi.plate}</span>` : '';
+    const descEl  = vi.desc  ? `<span class="bus-desc">${vi.desc}</span>`      : '';
+
+    let cards = '';
+    g.nations.forEach(n => {
+      const ns = getNS(n.id);
+      const ncCls = ['nation-card',ns.done?'done':'',ns.delay?'delayed':''].filter(Boolean).join(' ');
+      const others = g.nations.filter(x=>x.id!==n.id).map(x=>x.name).join(', ');
+      const coTravelEl = others ? `<span class="nc-cotravel">mit ${others}</span>` : '';
+      const delayBadge = ns.delay ? `<span class="nc-delay-badge">+${ns.delay} min</span>` : '';
+      const notePreview = ns.note ? `<div class="nc-note-preview">📝 ${ns.note}</div>` : '';
+      const hasNote = !!ns.note;
+
+      cards += `
+        <div class="${ncCls}" id="nc-${n.id}" onclick="toggleNation('${n.id}','${dayKey}')">
+          <div class="nc-check">
+            <svg class="nc-check-icon" width="12" height="12" viewBox="0 0 14 14" fill="none">
+              <path d="M2.5 7L5.5 10L11.5 4" stroke="white" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="nc-info">
+            <div class="nc-top">
+              <span class="nc-arrive">${n.arrive}</span>
+              <span class="nc-name">${n.name}</span>
+              <span class="nc-flight">✈ ${n.flight}</span>
+            </div>
+            <div class="nc-mid">
+              <span class="nc-pax">👤 ${n.pax}</span>
+              ${coTravelEl}
+              ${delayBadge}
+            </div>
+            ${notePreview}
+          </div>
+          <div class="nc-actions">
+            <button class="nc-btn${ns.delay?' active-delay':''}" onclick="toggleDelayRow(event,'${n.id}','${dayKey}')">⏱</button>
+            <button class="nc-btn${hasNote?' active-note':''}" onclick="toggleNoteRow(event,'${n.id}','${dayKey}')">📝</button>
+          </div>
+        </div>
+        <div class="nc-expand" id="dlrow-${n.id}">
+          <span class="exp-label">Verspätung</span>
+          <input class="exp-input" type="number" id="dlinput-${n.id}" placeholder="min" value="${ns.delay||''}" min="1" max="999">
+          <button class="btn-ok" onclick="saveDelay('${n.id}','${dayKey}')">OK</button>
+          ${ns.delay?`<button class="btn-clr" onclick="clearDelay('${n.id}','${dayKey}')">✕</button>`:''}
+        </div>
+        <div class="nc-note-expand" id="noterow-${n.id}">
+          <textarea class="note-input" id="noteinput-${n.id}" rows="2" placeholder="Notiz z.B. fährt Taxi, kein Transfer nötig …">${ns.note||''}</textarea>
+          <div class="exp-row">
+            <button class="btn-ok" onclick="saveNote('${n.id}','${dayKey}')">Speichern</button>
+            ${ns.note?`<button class="btn-clr" onclick="clearNote('${n.id}','${dayKey}')">Löschen</button>`:''}
+          </div>
+        </div>`;
+    });
+
+    html += `<div class="${blkCls}" id="blk-${g.gid}">
+      <div class="${hdrCls}">
+        <div class="bus-header-info">
+          <div class="bus-top">
+            <span class="bus-depart">${g.departTime}</span>
+            <span class="${vcls}">${g.vehicle}</span>
+            <span class="bus-progress ${progCls}">${progTxt}</span>
+          </div>
+          <div class="bus-driver-row">
+            <span class="bus-driver-name">🚌 ${driver.name}</span>
+            ${phoneEl}
+          </div>
+          ${plateEl || descEl ? `<div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;">${plateEl}${descEl}</div>` : ''}
+        </div>
+      </div>
+      <div class="bus-phone-row" id="phrow-${g.gid}">
+        <span class="exp-label">${driver.name}</span>
+        <input class="ph-input" type="tel" id="phinput-${g.gid}" placeholder="Handynummer" value="${phone}">
+        <button class="btn-ok" onclick="saveBusPhone('${g.gid}','${g.driver}','${dayKey}')">OK</button>
+      </div>
+      ${cards}
+    </div>`;
+  });
+
+  container.innerHTML = html;
+  updateProgress();
+}
+
+function getVehicleInfo(key) { return vehicleInfo[key] || {plate:'',desc:''}; }
+
+function renderDrivers() {
+  const c = document.getElementById('page-drivers');
+  let html = '<p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Kennzeichen und Beschreibung werden auf den Fahrt-Karten angezeigt.</p>';
+  Object.entries(DRIVERS).forEach(([key,d]) => {
+    const phone = getPhone(key);
+    const vi    = getVehicleInfo(key);
+    html += `<div class="driver-card" id="dc-${key}">
+      <div class="dc-name">${d.name}</div>
+      <div class="dc-vehicle">${d.vehicle}</div>
+      ${vi.plate ? `<div class="dc-plate">🔖 ${vi.plate}</div>` : ''}
+      ${vi.desc  ? `<div class="dc-desc">${vi.desc}</div>`      : ''}
+      <div class="dc-row">
+        ${phone?`<a class="dc-phone-link" href="tel:${phone}">📞 ${phone}</a>`:`<span class="dc-phone-empty">Noch keine Nummer</span>`}
+        <button class="dc-edit" onclick="toggleDcEdit('${key}')">Bearbeiten</button>
+      </div>
+      <div class="dc-input-row" id="dci-${key}">
+        <div class="dc-input-group">
+          <span class="dc-input-label">📞 Nummer</span>
+          <input class="dc-input" type="tel" id="dcf-phone-${key}" placeholder="Handynummer" value="${phone}">
+        </div>
+        <div class="dc-input-group">
+          <span class="dc-input-label">🔖 Kennzeichen</span>
+          <input class="dc-input" type="text" id="dcf-plate-${key}" placeholder="z.B. B-XY 1234" value="${vi.plate}">
+        </div>
+        <div class="dc-input-group">
+          <span class="dc-input-label">🚐 Beschreibung</span>
+          <textarea class="dc-textarea" id="dcf-desc-${key}" rows="2" placeholder="z.B. weißer Kleinbus, Aufschrift Schimmel">${vi.desc}</textarea>
+        </div>
+        <div class="dc-input-group">
+          <button class="btn-ok" onclick="saveDcAll('${key}')">Speichern</button>
+        </div>
+      </div>
+    </div>`;
+  });
+  c.innerHTML = html;
+}
+
+// Actions
+function toggleNation(id,dayKey){
+  if(!state[id]) state[id]={done:false,delay:null,note:''};
+  state[id].done=!state[id].done;
+  saveState(); renderDay(dayKey);
+}
+
+function closeAllExpand(exceptId,type){
+  document.querySelectorAll('.nc-expand.open,.nc-note-expand.open').forEach(r=>{
+    if(r.id!==type+'-'+exceptId) r.classList.remove('open');
+  });
+}
+
+function toggleDelayRow(e,id,dayKey){
+  e.stopPropagation();
+  closeAllExpand(id,'dlrow');
+  const row=document.getElementById('dlrow-'+id);
+  row.classList.toggle('open');
+  if(row.classList.contains('open'))
+    setTimeout(()=>{const i=document.getElementById('dlinput-'+id);if(i)i.focus();},100);
+}
+
+function toggleNoteRow(e,id,dayKey){
+  e.stopPropagation();
+  closeAllExpand(id,'noterow');
+  const row=document.getElementById('noterow-'+id);
+  row.classList.toggle('open');
+  if(row.classList.contains('open'))
+    setTimeout(()=>{const i=document.getElementById('noteinput-'+id);if(i)i.focus();},100);
+}
+
+function saveDelay(id,dayKey){
+  const val=parseInt(document.getElementById('dlinput-'+id).value);
+  if(!state[id]) state[id]={done:false,delay:null,note:''};
+  state[id].delay=isNaN(val)||val<=0?null:val;
+  saveState(); renderDay(dayKey);
+}
+function clearDelay(id,dayKey){
+  if(!state[id]) state[id]={done:false,delay:null,note:''};
+  state[id].delay=null;
+  saveState(); renderDay(dayKey);
+}
+function saveNote(id,dayKey){
+  const val=document.getElementById('noteinput-'+id).value.trim();
+  if(!state[id]) state[id]={done:false,delay:null,note:''};
+  state[id].note=val;
+  saveState(); renderDay(dayKey);
+}
+function clearNote(id,dayKey){
+  if(!state[id]) state[id]={done:false,delay:null,note:''};
+  state[id].note='';
+  saveState(); renderDay(dayKey);
+}
+
+function openBusPhone(e,gid){
+  e.stopPropagation();
+  const row=document.getElementById('phrow-'+gid);
+  row.classList.toggle('open');
+  if(row.classList.contains('open'))
+    setTimeout(()=>{const i=document.getElementById('phinput-'+gid);if(i)i.focus();},100);
+}
+function saveBusPhone(gid,driverKey,dayKey){
+  const val=document.getElementById('phinput-'+gid).value.trim();
+  phones[driverKey]=val;
+  savePhones();
+  renderDay('fri'); renderDay('sat'); renderDrivers();
+  showTab(dayKey);
+}
+function toggleDcEdit(key){
+  const card=document.getElementById('dc-'+key);
+  card.classList.toggle('dc-editing');
+  if(card.classList.contains('dc-editing'))
+    setTimeout(()=>{const i=document.getElementById('dcf-phone-'+key);if(i)i.focus();},100);
+}
+function saveDcAll(key){
+  phones[key]      = document.getElementById('dcf-phone-'+key).value.trim();
+  if(!vehicleInfo[key]) vehicleInfo[key]={plate:'',desc:''};
+  vehicleInfo[key].plate = document.getElementById('dcf-plate-'+key).value.trim();
+  vehicleInfo[key].desc  = document.getElementById('dcf-desc-'+key).value.trim();
+  savePhones(); saveVI();
+  renderDay('fri'); renderDay('sat'); renderDrivers();
+}
+
+function updateProgress(){
+  const all=[...GROUPS.fri,...GROUPS.sat].flatMap(g=>g.nations);
+  const done=all.filter(n=>getNS(n.id).done).length;
+  const pct=Math.round(done/all.length*100);
+  document.getElementById('progressBar').style.width=pct+'%';
+  document.getElementById('progressText').textContent=`${done} von ${all.length} angekommen`;
+  document.getElementById('progressPct').textContent=pct+' %';
+}
+
+function showTab(tab){
+  document.querySelectorAll('.page,.drivers-page').forEach(d=>d.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(tab==='drivers'?'page-drivers':'page-'+tab).classList.add('active');
+  document.querySelectorAll('.tab')[tab==='fri'?0:tab==='sat'?1:2].classList.add('active');
+}
+
+renderDay('fri');
+renderDay('sat');
+renderDrivers();
+updateProgress();
+</script>
+</body>
+</html>
