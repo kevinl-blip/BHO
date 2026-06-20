@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>BJEC 2026 – Ankünfte</title>
+<style>
+  :root{
+    --bg:#0f1117;--surface:#1c1f2a;--card:#242838;--accent:#3d7fff;
+    --green:#22c97a;--yellow:#f5c842;--orange:#ff9d6a;--red:#ff5a5a;--text:#e8eaf0;--muted:#7a80a0;
+    --border:#2e3350;--radius:13px;
+    --font:-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:60px;}
+
+  .header{background:var(--surface);padding:46px 16px 12px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;}
+  .header-row{display:flex;justify-content:space-between;align-items:flex-start;}
+  .header-title{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:2px;}
+  .header-sub{font-size:19px;font-weight:700;}
+  .live-clock{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text);text-align:right;line-height:1;}
+  .live-clock-label{font-size:9px;color:var(--muted);text-align:right;margin-top:2px;}
+  .version{font-size:10px;color:var(--muted);margin-top:3px;}
+  .progress-wrap{margin-top:10px;background:var(--border);border-radius:99px;height:5px;overflow:hidden;}
+  .progress-bar{height:100%;background:var(--green);border-radius:99px;transition:width .3s;}
+  .progress-label{margin-top:5px;font-size:11px;color:var(--muted);display:flex;justify-content:space-between;}
+
+  .tabs{display:flex;background:var(--surface);padding:0 16px 8px;gap:6px;border-bottom:1px solid var(--border);position:sticky;top:130px;z-index:99;}
+  .tab{flex:1;padding:8px 2px;border-radius:9px;border:none;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;background:var(--card);color:var(--muted);transition:all .18s;}
+  .tab.active{background:var(--accent);color:#fff;}
+  .tab-d{background:#1a2e1a;color:#5dd67a;}
+  .tab-d.active{background:#1e6b3a;color:#fff;}
+
+  /* Toolbar */
+  .toolbar{display:flex;gap:6px;padding:8px 12px 4px;flex-wrap:wrap;align-items:center;}
+  .tb-btn{background:var(--card);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font);font-size:12px;font-weight:600;padding:6px 10px;cursor:pointer;display:flex;align-items:center;gap:5px;}
+  .tb-btn.active{border-color:var(--accent);color:var(--accent);}
+  .tb-btn.add{background:#13301f;border-color:#1e6b3a;color:#5dd67a;}
+  .tb-btn.reset{margin-left:auto;border-color:#4a2020;color:#ff8a8a;}
+
+  .page{display:none;padding:6px 12px 0;}
+  .page.active{display:block;}
+  .drivers-page{display:none;padding:12px;}
+  .drivers-page.active{display:block;}
+
+  .summary{background:var(--surface);border-radius:var(--radius);padding:11px 14px;margin:6px 0 12px;display:flex;gap:6px;}
+  .summary-item{text-align:center;flex:1;}
+  .summary-num{font-size:19px;font-weight:700;}
+  .summary-lbl{font-size:10px;color:var(--muted);margin-top:1px;}
+  .s-green{color:var(--green);} .s-yellow{color:var(--yellow);}
+
+  /* Parking zone */
+  .park-zone{background:#2a2410;border:1.5px dashed #5a4d1e;border-radius:var(--radius);padding:10px 12px;margin-bottom:14px;}
+  .park-title{font-size:12px;font-weight:700;color:var(--yellow);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+  .park-empty{font-size:11px;color:var(--muted);font-style:italic;}
+  .park-nation{background:var(--card);border:1.5px solid #5a4d1e;border-radius:9px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px;}
+  .park-nation .pn-info{flex:1;min-width:0;}
+  .park-nation .pn-name{font-size:14px;font-weight:700;}
+  .park-nation .pn-sub{font-size:11px;color:var(--muted);}
+  .pn-assign{background:var(--accent);color:#fff;border:none;border-radius:7px;font-family:var(--font);font-size:12px;font-weight:700;padding:6px 10px;cursor:pointer;}
+
+  /* Bus block */
+  .bus-block{margin-bottom:14px;}
+  .bus-block.hidden-done{display:none;}
+  .bus-header{
+    display:flex;align-items:flex-start;gap:8px;padding:10px 12px;
+    background:var(--surface);border-radius:10px 10px 0 0;
+    border:1.5px solid var(--border);border-bottom:none;
+  }
+  .bus-header.all-done{background:#0d2a1a;border-color:var(--green);}
+  .bus-header.due-soon{background:#2a1e0d;border-color:var(--orange);}
+  .bus-header.overdue{background:#2a0d0d;border-color:var(--red);}
+  .bus-header-info{flex:1;min-width:0;}
+  .bus-top{display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap;}
+  .group-num{font-size:11px;font-weight:800;background:var(--accent);color:#fff;border-radius:6px;padding:2px 7px;white-space:nowrap;}
+  .bus-depart{font-size:17px;font-weight:800;}
+  .bus-vehicle{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;background:#1e2d1e;color:#5dd67a;white-space:nowrap;}
+  .bus-vehicle.vip{background:#1a2440;color:#6aabff;}
+  .abflug-badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;background:#3a1e1e;color:var(--orange);white-space:nowrap;}
+  .due-badge{font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;white-space:nowrap;}
+  .due-badge.soon{background:#3a2a0d;color:var(--orange);}
+  .due-badge.over{background:#3a0d0d;color:var(--red);}
+  .bus-progress{font-size:11px;font-weight:700;white-space:nowrap;margin-left:auto;}
+  .bus-progress.done{color:var(--green);}
+  .bus-progress.partial{color:var(--yellow);}
+  .bus-driver-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .bus-driver-name{font-size:13px;font-weight:600;}
+  .bus-pax{font-size:12px;color:var(--text);font-weight:600;background:var(--card);border-radius:6px;padding:1px 7px;}
+  .bus-pax.overbooked{background:#3a0d0d;color:var(--red);}
+  .bus-phone{font-size:12px;color:var(--accent);text-decoration:none;font-weight:600;padding:2px 7px;background:#1a2440;border-radius:6px;white-space:nowrap;}
+  .bus-phone-add{font-size:11px;color:var(--muted);padding:2px 6px;border-radius:6px;border:1px dashed var(--border);cursor:pointer;white-space:nowrap;}
+  .bus-edit-btn{font-size:11px;color:var(--muted);padding:2px 8px;border-radius:6px;border:1px solid var(--border);cursor:pointer;background:transparent;}
+  .bus-wa{font-size:11px;color:#25d366;padding:2px 7px;border-radius:6px;background:#11281a;white-space:nowrap;text-decoration:none;font-weight:600;}
+
+  /* Edit group row */
+  .group-edit{display:none;padding:10px 12px;background:var(--surface);border-left:1.5px solid var(--accent);border-right:1.5px solid var(--accent);flex-direction:column;gap:8px;}
+  .group-edit.open{display:flex;}
+  .ge-row{display:flex;gap:8px;align-items:center;}
+  .ge-label{font-size:11px;color:var(--muted);width:70px;flex-shrink:0;}
+  .ge-input,.ge-select{flex:1;background:var(--bg);border:1.5px solid var(--border);border-radius:7px;color:var(--text);font-family:var(--font);font-size:14px;padding:6px 10px;-webkit-appearance:none;}
+  .ge-input:focus,.ge-select:focus{outline:none;border-color:var(--accent);}
+
+  /* Phone input row */
+  .bus-phone-row{display:none;padding:8px 12px;gap:8px;align-items:center;background:var(--surface);border-left:1.5px solid var(--border);border-right:1.5px solid var(--border);}
+  .bus-phone-row.open{display:flex;}
+
+  /* Nation card */
+  .nation-card{
+    background:var(--card);
+    border-left:1.5px solid var(--border);border-right:1.5px solid var(--border);border-bottom:1.5px solid var(--border);
+    padding:10px 12px;display:flex;align-items:flex-start;gap:10px;
+    cursor:pointer;user-select:none;transition:background .15s;
+  }
+  .nation-card:last-of-type{border-radius:0 0 10px 10px;}
+  .nation-card.done{background:#0d1f12;}
+  .bus-block.all-done .nation-card{border-left-color:var(--green);border-right-color:var(--green);border-bottom-color:var(--green);}
+  .bus-block.all-done .bus-header{border-color:var(--green);}
+
+  .nc-check{width:24px;height:24px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .18s;margin-top:2px;}
+  .nation-card.done .nc-check{background:var(--green);border-color:var(--green);}
+  .nc-check-icon{display:none;}
+  .nation-card.done .nc-check-icon{display:block;}
+
+  .nc-info{flex:1;min-width:0;}
+  .nc-top{display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;}
+  .nc-arrive{font-size:16px;font-weight:800;white-space:nowrap;}
+  .nc-arrive-old{font-size:13px;font-weight:600;color:var(--muted);text-decoration:line-through;white-space:nowrap;}
+  .nc-arrive-new{color:var(--yellow);}
+  .nc-term{font-size:11px;font-weight:700;color:#6aabff;background:#1a2440;border-radius:6px;padding:1px 7px;white-space:nowrap;}
+  .nc-origin{font-size:11px;color:var(--orange);font-weight:600;}
+  .nc-hotel{font-size:11px;font-weight:700;border-radius:6px;padding:1px 7px;white-space:nowrap;}
+  .nc-hotel-GM{background:#13301f;color:#5dd67a;}
+  .nc-hotel-AO{background:#2a1f3d;color:#b07fff;}
+  .nc-hotel-VIP{background:#1a2440;color:#6aabff;}
+  .bus-block.collapsed .nation-card,
+  .bus-block.collapsed .nc-expand,
+  .bus-block.collapsed .nc-note-expand,
+  .bus-block.collapsed .group-edit,
+  .bus-block.collapsed .bus-phone-row{display:none!important;}
+  .bus-block.collapsed .bus-header{border-radius:10px;border-bottom:1.5px solid var(--border);}
+  .bus-block.collapsed.all-done .bus-header{border-bottom-color:var(--green);}
+  .collapse-chevron{font-size:13px;color:var(--muted);margin-left:4px;transition:transform .2s;}
+  .bus-block.collapsed .collapse-chevron{transform:rotate(-90deg);}
+  .nc-name{font-size:14px;font-weight:700;}
+  .nc-flight{font-size:11px;color:var(--muted);}
+  .nc-mid{display:flex;align-items:center;gap:8px;margin-bottom:3px;flex-wrap:wrap;}
+  .nc-pax{font-size:12px;color:var(--text);font-weight:500;}
+  .nc-cotravel{font-size:11px;color:var(--muted);}
+  .nc-note-preview{font-size:11px;color:var(--yellow);margin-top:2px;font-style:italic;}
+  .nc-delay-badge{font-size:11px;font-weight:700;color:var(--yellow);}
+
+  .nc-actions{display:grid;grid-template-columns:1fr 1fr;gap:5px;flex-shrink:0;align-content:start;}
+  .nc-btn{background:transparent;border:1.5px solid var(--border);border-radius:7px;color:var(--muted);font-size:13px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+  .nc-btn.active-delay,.nc-btn.active-note{border-color:var(--yellow);color:var(--yellow);}
+  .nc-btn.move{border-color:#5a4d1e;color:var(--yellow);}
+  .nc-btn.edit{border-color:#2d4a6e;color:#6aabff;}
+
+  .nc-expand{display:none;border-left:1.5px solid var(--border);border-right:1.5px solid var(--border);border-bottom:1.5px solid var(--border);background:var(--card);padding:8px 12px 10px;gap:8px;align-items:center;}
+  .nc-expand.open{display:flex;}
+  .bus-block.all-done .nc-expand{border-left-color:var(--green);border-right-color:var(--green);border-bottom-color:var(--green);}
+  .nc-note-expand{display:none;border-left:1.5px solid var(--border);border-right:1.5px solid var(--border);border-bottom:1.5px solid var(--border);background:var(--card);padding:8px 12px 10px;}
+  .nc-note-expand.open{display:flex;flex-direction:column;gap:6px;}
+
+  .exp-label{font-size:12px;color:var(--muted);white-space:nowrap;}
+  .exp-input{width:75px;background:var(--surface);border:1.5px solid var(--border);border-radius:7px;color:var(--text);font-family:var(--font);font-size:14px;font-weight:600;padding:5px 8px;text-align:center;-webkit-appearance:none;}
+  .exp-input:focus{outline:none;border-color:var(--yellow);}
+  .note-input{width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:7px;color:var(--text);font-family:var(--font);font-size:13px;padding:7px 10px;resize:none;-webkit-appearance:none;}
+  .note-input:focus{outline:none;border-color:var(--yellow);}
+  .exp-row{display:flex;gap:8px;align-items:center;}
+  .btn-ok{background:var(--accent);color:#fff;border:none;border-radius:7px;font-family:var(--font);font-size:13px;font-weight:700;padding:6px 13px;cursor:pointer;}
+  .btn-clr{background:transparent;border:1.5px solid var(--border);border-radius:7px;font-family:var(--font);font-size:12px;color:var(--muted);padding:5px 9px;cursor:pointer;}
+  .ph-input{flex:1;background:var(--bg);border:1.5px solid var(--accent);border-radius:7px;color:var(--text);font-family:var(--font);font-size:14px;padding:6px 10px;-webkit-appearance:none;}
+  .ph-input:focus{outline:none;}
+
+  /* Drivers */
+  .driver-card{background:var(--card);border-radius:var(--radius);border:1.5px solid var(--border);margin-bottom:10px;padding:13px;}
+  .dc-name{font-size:15px;font-weight:700;margin-bottom:2px;}
+  .dc-vehicle{font-size:11px;color:var(--muted);margin-bottom:4px;}
+  .dc-stats{font-size:11px;color:var(--accent);margin-bottom:8px;}
+  .dc-row{display:flex;align-items:center;gap:8px;}
+  .dc-phone-link{font-size:15px;font-weight:700;color:var(--accent);text-decoration:none;flex:1;}
+  .dc-phone-empty{font-size:13px;color:var(--muted);flex:1;}
+  .dc-edit{background:var(--surface);border:1.5px solid var(--border);border-radius:7px;color:var(--muted);font-family:var(--font);font-size:12px;padding:5px 10px;cursor:pointer;}
+  .dc-input-row{display:none;margin-top:10px;flex-direction:column;gap:8px;}
+  .dc-editing .dc-input-row{display:flex;}
+  .dc-input-group{display:flex;gap:8px;align-items:center;}
+  .dc-input-label{font-size:11px;color:var(--muted);white-space:nowrap;width:90px;}
+  .dc-input{flex:1;background:var(--surface);border:1.5px solid var(--accent);border-radius:7px;color:var(--text);font-family:var(--font);font-size:14px;padding:6px 10px;-webkit-appearance:none;}
+  .dc-input:focus{outline:none;}
+  .dc-textarea{flex:1;background:var(--surface);border:1.5px solid var(--accent);border-radius:7px;color:var(--text);font-family:var(--font);font-size:13px;padding:6px 10px;resize:none;-webkit-appearance:none;}
+  .dc-textarea:focus{outline:none;}
+  .bus-plate{font-size:11px;font-weight:700;color:var(--yellow);}
+  .bus-desc{font-size:11px;color:var(--muted);font-style:italic;}
+
+  /* Modal */
+  .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center;padding:20px;}
+  .modal-bg.open{display:flex;}
+  .modal{background:var(--surface);border-radius:var(--radius);border:1.5px solid var(--border);padding:18px;max-width:340px;width:100%;max-height:80vh;overflow-y:auto;}
+  .modal-title{font-size:15px;font-weight:700;margin-bottom:12px;}
+  .modal-opt{background:var(--card);border:1.5px solid var(--border);border-radius:9px;padding:11px 12px;margin-bottom:8px;cursor:pointer;font-size:14px;}
+  .modal-opt:active{border-color:var(--accent);}
+  .modal-cancel{width:100%;background:transparent;border:1.5px solid var(--border);border-radius:9px;color:var(--muted);font-family:var(--font);font-size:14px;padding:10px;cursor:pointer;margin-top:4px;}
+  .modal-danger{background:var(--red);color:#fff;border:none;border-radius:9px;font-family:var(--font);font-size:14px;font-weight:700;padding:11px;cursor:pointer;width:100%;margin-bottom:8px;}
+  .modal-warn{font-size:13px;color:var(--text);margin-bottom:14px;line-height:1.4;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-row">
+    <div>
+      <div class="header-title">BJEC Berlin 2026</div>
+      <div class="header-sub">Ankünfte BER</div>
+      <div class="version">Version 2.6 · Stand 20.06.2026 09:10</div>
+    </div>
+    <div>
+      <div class="live-clock" id="liveClock">--:--</div>
+      <div class="live-clock-label">jetzt</div>
+    </div>
+  </div>
+  <div class="progress-wrap"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
+  <div class="progress-label"><span id="progressText">0 abgehakt</span><span id="progressPct">0 %</span></div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('fri')">Fr 19.6.</button>
+  <button class="tab" onclick="showTab('sat')">Sa 20.6.</button>
+  <button class="tab tab-d" onclick="showTab('drivers')">👤 Fahrer</button>
+</div>
+
+<div class="toolbar" id="toolbar">
+  <button class="tb-btn" id="hideDoneBtn" onclick="toggleHideDone()">✓ Erledigte ausblenden</button>
+  <button class="tb-btn add" onclick="addNewGroup()">＋ Gruppe</button>
+  <button class="tb-btn add" onclick="addNewNation()">＋ Nation</button>
+  <button class="tb-btn reset" onclick="confirmReset()">↺ Reset</button>
+</div>
+
+<div id="page-fri" class="page active"></div>
+<div id="page-sat" class="page"></div>
+<div id="page-drivers" class="drivers-page"></div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<script>
+// ── DRIVERS ──────────────────────────────────────────────────────────────────
+const DRIVERS_DEFAULT = {
+  anna:    {name:'Anna Rafaevitch',   vehicle:'VIP',                 phone:'+491795094009', seats:4},
+  fabian:  {name:'Fabian Hahl',       vehicle:'Linienbus',           phone:'+491739322588', seats:69},
+  daniel:  {name:'Daniel Dobromyslo', vehicle:'Kleinbus Schimmel 1', phone:'+4917632446343',seats:8},
+  stuwe:   {name:'Fahrer (Stuwe)',    vehicle:'Bus Stuwe 2',         phone:'',              seats:50},
+  axel:    {name:'Axel Stuwe',        vehicle:'Bus Stuwe 1',         phone:'+491722554161', seats:50},
+  tim:     {name:'Tim Zachow',        vehicle:'Kleinbus Schimmel 2', phone:'+491716524466', seats:8},
+  jochen:  {name:'Jochen Zimmer',     vehicle:'Kleinbus (Lasse)',    phone:'+491735817344', seats:8},
+  marco:   {name:'Marco Föllen',      vehicle:'Kleinbus Schimmel 1', phone:'+491608735217', seats:8},
+  ramon:   {name:'Ramon Krysteck',    vehicle:'Kleinbus Schimmel 1', phone:'+491726596213', seats:8},
+  ulan:    {name:'Ulan Nyshanov',     vehicle:'Kleinbus Schimmel 2', phone:'+491794567747', seats:8},
+  martin:  {name:'Martin Willkat',    vehicle:'Kleinbus Schimmel 1', phone:'+491731545396', seats:8},
+  anika:   {name:'Anika Freese',      vehicle:'Volleyballbus',       phone:'+4917670747235', seats:8},
+  peter:   {name:'Peter Branse',      vehicle:'Bus Stuwe 2 (Fabian)',phone:'+491725220999', seats:50},
+  michelle:{name:'Michelle Goschin',  vehicle:'Kleinbus Schimmel 1', phone:'',              seats:8},
+  valesca: {name:'Valesca',           vehicle:'Kleinbus Schimmel 2', phone:'',              seats:8},
+};
+
+const GROUPS_DEFAULT = {
+  fri:[
+    {gid:'fg1',departTime:'09:15',driver:'fabian',vehicle:'Linienbus',vip:false,nations:[
+      {id:'f01',name:'NOR-01',arrive:'08:35',pax:5, flight:'DY1100',term:'',origin:'',hotel:'A&O'},
+      {id:'f02',name:'SWE-01',arrive:'08:50',pax:2, flight:'EJU5262',term:'',origin:'',hotel:'GM'},
+      {id:'f03',name:'FRA-01',arrive:'08:55',pax:1, flight:'AF1434',term:'',origin:'',hotel:'GM'},
+      {id:'f04',name:'CYP-02',arrive:'08:55',pax:2, flight:'LH4573',term:'',origin:'',hotel:'A&O'},
+      {id:'f05',name:'LTU-01',arrive:'09:00',pax:1, flight:'FR3669',term:'',origin:'',hotel:'A&O'},
+      {id:'f06',name:'AZE-01',arrive:'09:15',pax:17,flight:'TK1721',term:'',origin:'',hotel:'GM'},
+    ]},
+    {gid:'fg2',departTime:'10:20',driver:'ramon',vehicle:'Kleinbus Schimmel 1',vip:false,nations:[
+      {id:'f07',name:'HUN-01',arrive:'10:10',pax:6,flight:'FR197',term:'',origin:'',hotel:'GM'},
+      {id:'f08',name:'GBR-01',arrive:'10:20',pax:2,flight:'BA986',term:'',origin:'',hotel:'GM'},
+    ]},
+    {gid:'fg3',departTime:'10:50',driver:'jochen',vehicle:'Kleinbus (Lasse)',vip:false,nations:[
+      {id:'f09',name:'ESP-03',arrive:'09:45',pax:3,flight:'EJU7335',term:'',origin:'',hotel:'A&O'},
+      {id:'f10',name:'ESP-04',arrive:'10:35',pax:1,flight:'IB0781',term:'',origin:'',hotel:'GM'},
+      {id:'f11',name:'GRE-01',arrive:'10:35',pax:2,flight:'A3820',term:'',origin:'',hotel:'A&O'},
+      {id:'f12',name:'ESP-06',arrive:'10:35',pax:1,flight:'IB781',term:'',origin:'',hotel:'GM'},
+      {id:'f13',name:'BEL-01',arrive:'10:50',pax:1,flight:'SN2581',term:'',origin:'',hotel:'GM'},
+    ]},
+    {gid:'fg4',departTime:'12:00',driver:'anna',vehicle:'VIP',vip:true,nations:[
+      {id:'f14',name:'DJB-EJU',arrive:'11:35',pax:1,flight:'W62315',term:'',origin:'',hotel:'VIP'},
+      {id:'f15',name:'DJB-EJU',arrive:'12:05',pax:1,flight:'LH1926',term:'',origin:'',hotel:'VIP'},
+    ]},
+    {gid:'fg5',departTime:'12:15',driver:'axel',vehicle:'Bus Stuwe 1',vip:false,nations:[
+      {id:'f16',name:'EST-01', arrive:'11:10',pax:2, flight:'FR2733',term:'',origin:'',hotel:'A&O'},
+      {id:'f17',name:'MNE-02', arrive:'11:10',pax:3, flight:'FR1579',term:'',origin:'',hotel:'A&O'},
+      {id:'f18',name:'TUR-01', arrive:'11:30',pax:12,flight:'VF57',term:'',origin:'',hotel:'GM'},
+      {id:'f19',name:'CRO-01', arrive:'11:35',pax:2, flight:'W62315',term:'',origin:'',hotel:'A&O'},
+      {id:'f20',name:'KGZ-01', arrive:'11:35',pax:1, flight:'W62315',term:'',origin:'',hotel:'GM'},
+      {id:'f21',name:'GBR-01', arrive:'11:45',pax:2, flight:'FR176',term:'',origin:'',hotel:'GM'},
+      {id:'f22',name:'AZE-01', arrive:'11:50',pax:1, flight:'TK1729',term:'',origin:'',hotel:'GM'},
+      {id:'f23',name:'ESP-01', arrive:'12:10',pax:1, flight:'FR227',term:'',origin:'',hotel:'A&O'},
+    ]},
+    {gid:'fg6',departTime:'13:00',driver:'ramon',vehicle:'Kleinbus Schimmel 1',vip:false,nations:[
+      {id:'f24',name:'SUI-01', arrive:'12:55',pax:4,flight:'LH184',term:'',origin:'',hotel:'A&O'},
+      {id:'f25',name:'GER-02', arrive:'12:55',pax:1,flight:'LH184',term:'',origin:'',hotel:'GM'},
+      {id:'f26',name:'IRT-01', arrive:'13:00',pax:1,flight:'LH4064',term:'',origin:'',hotel:'GM'},
+    ]},
+    {gid:'fg7',departTime:'13:05',driver:'jochen',vehicle:'Kleinbus (Lasse)',vip:false,nations:[
+      {id:'f27',name:'FIN-01', arrive:'13:05',pax:8,flight:'AY1433',term:'',origin:'',hotel:'A&O'},
+    ]},
+    {gid:'fg8',departTime:'14:20',driver:'tim',vehicle:'Kleinbus Schimmel 2',vip:false,nations:[
+      {id:'f28',name:'EST-01', arrive:'13:20',pax:6,flight:'BT821',term:'',origin:'',hotel:'GM'},
+      {id:'f29',name:'SWE-02', arrive:'14:20',pax:1,flight:'D84505',term:'',origin:'',hotel:'A&O'},
+    ]},
+    {gid:'fg9',departTime:'17:30',driver:'anna',vehicle:'VIP',vip:true,nations:[
+      {id:'f30',name:'DJB-EJU',arrive:'17:20',pax:1,flight:'VF509',term:'',origin:'',hotel:'VIP'},
+      {id:'f31',name:'DJB-EJU',arrive:'17:30',pax:1,flight:'AF1834',term:'',origin:'',hotel:'VIP'},
+    ]},
+    {gid:'fg10',departTime:'18:00',driver:'axel',vehicle:'Bus Stuwe 1',vip:false,nations:[
+      {id:'f32',name:'GBR-01', arrive:'17:15',pax:1, flight:'FR2962',term:'',origin:'',hotel:'GM'},
+      {id:'f33',name:'TUR-01', arrive:'17:20',pax:1, flight:'VF509',term:'',origin:'',hotel:'GM'},
+      {id:'f34',name:'FRA-01', arrive:'17:30',pax:1, flight:'AF1834',term:'',origin:'',hotel:'GM'},
+      {id:'f35',name:'FRA-02', arrive:'17:30',pax:15,flight:'AF1834',term:'',origin:'',hotel:'GM'},
+      {id:'f36',name:'ROU-01', arrive:'18:15',pax:1, flight:'W64009',term:'',origin:'',hotel:'A&O'},
+      {id:'f37',name:'SRB-03', arrive:'18:15',pax:1, flight:'W64009',term:'',origin:'',hotel:'GM'},
+    ]},
+    {gid:'fg11',departTime:'19:50',driver:'martin',vehicle:'Kleinbus Schimmel 1',vip:false,nations:[
+      {id:'f38',name:'SWE-02',arrive:'19:00',pax:2,flight:'EW8221',term:'',origin:'',hotel:'A&O'},
+      {id:'f39',name:'LAT-01',arrive:'19:55',pax:1,flight:'BT213',term:'',origin:'',hotel:'GM'},
+    ]},
+    {gid:'fg12',departTime:'20:15',driver:'anna',vehicle:'VIP',vip:true,nations:[
+      {id:'f40',name:'DJB-EJU',arrive:'20:15',pax:1,flight:'W43109',term:'',origin:'',hotel:'VIP'},
+    ]},
+    {gid:'fg13',departTime:'21:45',driver:'ulan',vehicle:'Kleinbus Schimmel 2',vip:false,nations:[
+      {id:'f41',name:'GBR-01', arrive:'21:00',pax:4,flight:'EZY2933',term:'',origin:'',hotel:'GM'},
+      {id:'f42',name:'REF-POL',arrive:'21:55',pax:1,flight:'LO391',term:'',origin:'',hotel:'GM'},
+    ]},
+  ],
+  sat:[
+    {gid:'sg1',departTime:'08:20',driver:'marco',vehicle:'Kleinbus Schimmel 1',vip:false,nations:[
+      {id:'s01',name:'LTU-01',arrive:'08:05',pax:4,flight:'FR1571',term:'',origin:'',hotel:'A&O'},
+      {id:'s02',name:'LAT-01',arrive:'07:40',pax:2,flight:'BT211',term:'',origin:'',hotel:'A&O'},
+    ]},
+    {gid:'sg2',departTime:'11:30',driver:'ulan',vehicle:'Kleinbus Schimmel 2',vip:false,nations:[
+      {id:'s03',name:'HUN-01',arrive:'11:35',pax:2,flight:'W62315',term:'',origin:'',hotel:'GM'},
+      {id:'s04',name:'GBR-01',arrive:'10:25',pax:2,flight:'BA0990',term:'',origin:'',hotel:'GM'},
+      {id:'s05',name:'POL-02',arrive:'10:35',pax:1,flight:'LO387',term:'',origin:'',hotel:'GM'},
+    ]},
+    {gid:'sg3',departTime:'14:45',driver:'daniel',vehicle:'Volleyballbus',vip:false,nations:[
+      {id:'s06',name:'SWE-01',arrive:'14:00',pax:3,flight:'EW4600',term:'',origin:'',hotel:'GM'},
+      {id:'s07',name:'GBR-01',arrive:'14:45',pax:3,flight:'FR1145',term:'',origin:'',hotel:'GM'},
+    ]},
+    {gid:'sg4',departTime:'15:45',driver:'ulan',vehicle:'Kleinbus Schimmel 1',vip:false,abflug:true,nations:[
+      {id:'s08',name:'EST-01',arrive:'—',pax:2,flight:'FR2732',term:'',origin:'',hotel:'GM'},
+    ]},
+  ]
+};
+
+// ── STATE / PERSISTENCE ──────────────────────────────────────────────────────
+// Editable data (groups, drivers, parking) persisted separately from per-nation status
+const DATA_VERSION = '2.5';
+const HOTELS = ['', 'GM', 'A&O', 'VIP'];
+const TERMINALS = ['', 'T1 A1', 'T1 A2', 'T2'];
+let GROUPS, DRIVERS, parking;
+let state={}, phones={}, vehicleInfo={}, collapsed={};
+let hideDone=false;
+
+function loadData(){
+  let saved=null;
+  try { saved=JSON.parse(localStorage.getItem('bjec26_data')||'null'); } catch(e){}
+  if(saved && saved.v===DATA_VERSION){
+    GROUPS=saved.groups; DRIVERS=saved.drivers; parking=saved.parking||{fri:[],sat:[]};
+  } else {
+    GROUPS=JSON.parse(JSON.stringify(GROUPS_DEFAULT));
+    DRIVERS=JSON.parse(JSON.stringify(DRIVERS_DEFAULT));
+    parking={fri:[],sat:[]};
+    saveData();
+  }
+  try { state=JSON.parse(localStorage.getItem('bjec26_state')||'{}'); } catch(e){}
+  try { phones=JSON.parse(localStorage.getItem('bjec26_phones')||'{}'); } catch(e){}
+  try { vehicleInfo=JSON.parse(localStorage.getItem('bjec26_vi')||'{}'); } catch(e){}
+  try { collapsed=JSON.parse(localStorage.getItem('bjec26_collapsed')||'{}'); } catch(e){}
+}
+function saveData(){ localStorage.setItem('bjec26_data',JSON.stringify({v:DATA_VERSION,groups:GROUPS,drivers:DRIVERS,parking:parking})); }
+function saveState(){ localStorage.setItem('bjec26_state',JSON.stringify(state)); }
+function savePhones(){ localStorage.setItem('bjec26_phones',JSON.stringify(phones)); }
+function saveVI(){ localStorage.setItem('bjec26_vi',JSON.stringify(vehicleInfo)); }
+function saveCollapsed(){ localStorage.setItem('bjec26_collapsed',JSON.stringify(collapsed)); }
+
+function getNS(id){ return state[id]||{done:false,newArrive:null,note:''}; }
+function getPhone(k){ return phones[k] || (DRIVERS[k]&&DRIVERS[k].phone) || ''; }
+function getVehicleInfo(k){ return vehicleInfo[k]||{plate:'',desc:''}; }
+
+// ── TIME HELPERS ─────────────────────────────────────────────────────────────
+function nowMinutes(){ const d=new Date(); return d.getHours()*60+d.getMinutes(); }
+function toMin(hhmm){ if(!hhmm||hhmm.indexOf(':')<0) return null; const [h,m]=hhmm.split(':').map(Number); return h*60+m; }
+function sortGroups(dayKey){
+  GROUPS[dayKey].sort((a,b)=>{
+    const ta=toMin(a.departTime), tb=toMin(b.departTime);
+    if(ta===null) return 1; if(tb===null) return -1;
+    return ta-tb;
+  });
+}
+
+function updateClock(){
+  const d=new Date();
+  const hh=String(d.getHours()).padStart(2,'0');
+  const mm=String(d.getMinutes()).padStart(2,'0');
+  const el=document.getElementById('liveClock');
+  if(el) el.textContent=`${hh}:${mm}`;
+}
+
+// ── RENDER DAY ───────────────────────────────────────────────────────────────
+function renderDay(dayKey){
+  const groups=GROUPS[dayKey];
+  const container=document.getElementById('page-'+dayKey);
+
+  const allN=groups.flatMap(g=>g.nations);
+  const doneN=allN.filter(n=>getNS(n.id).done).length;
+  const delayN=allN.filter(n=>getNS(n.id).delay).length;
+  const totalP=allN.reduce((a,n)=>a+n.pax,0);
+
+  let html=`<div class="summary">
+    <div class="summary-item"><div class="summary-num">${allN.length}</div><div class="summary-lbl">Gruppen</div></div>
+    <div class="summary-item"><div class="summary-num">${totalP}</div><div class="summary-lbl">Personen</div></div>
+    <div class="summary-item"><div class="summary-num s-green">${doneN}</div><div class="summary-lbl">Erledigt</div></div>
+    <div class="summary-item"><div class="summary-num s-yellow">${delayN}</div><div class="summary-lbl">Verspätet</div></div>
+  </div>`;
+
+  // Parking zone
+  const park=parking[dayKey]||[];
+  html+=`<div class="park-zone"><div class="park-title">🅿️ Geparkt / nicht zugeordnet (${park.length})</div>`;
+  if(!park.length){
+    html+=`<div class="park-empty">Hier landen Nationen die du aus einer Gruppe löst. Von hier kannst du sie neu zuordnen.</div>`;
+  } else {
+    park.forEach(n=>{
+      const ns=getNS(n.id);
+      html+=`<div class="park-nation">
+        <div class="pn-info">
+          <span class="pn-name">${n.name}</span>
+          <div class="pn-sub">✈ ${n.flight} · 👤 ${n.pax} · Ankunft ${ns.newArrive?ns.newArrive+' (gepl. '+n.arrive+')':n.arrive}${n.hotel?' · 🏨 '+n.hotel:''}${n.term?' · '+n.term:''}</div>
+        </div>
+        <button class="pn-assign" onclick="openAssignModal('${dayKey}','${n.id}')">Zuordnen →</button>
+      </div>`;
+    });
+  }
+  html+=`</div>`;
+
+  const now=nowMinutes();
+
+  groups.forEach((g,idx)=>{
+    const driver=DRIVERS[g.driver]||{name:g.driver,vehicle:g.vehicle};
+    const phone=getPhone(g.driver);
+    const doneCount=g.nations.filter(n=>getNS(n.id).done).length;
+    const total=g.nations.length;
+    const allDone=total>0 && doneCount===total;
+    const totalPax=g.nations.reduce((a,n)=>a+n.pax,0);
+    const seats = (g.seats!==undefined && g.seats!==null && g.seats!=='') ? g.seats : (DRIVERS[g.driver]&&DRIVERS[g.driver].seats);
+    const seatStr = (seats!==undefined&&seats!==null&&seats!=='') ? `${totalPax}/${seats}` : `${totalPax}`;
+    const overbooked = (seats!==undefined&&seats!==null&&seats!=='') && totalPax>seats;
+
+    const depMin=toMin(g.departTime);
+    let dueClass='', dueBadge='';
+    if(!allDone && depMin!==null){
+      const diff=depMin-now;
+      if(diff<0){ dueClass='overdue'; dueBadge='<span class="due-badge over">ÜBERFÄLLIG</span>'; }
+      else if(diff<=30){ dueClass='due-soon'; dueBadge=`<span class="due-badge soon">in ${diff} min</span>`; }
+    }
+
+    const progCls=allDone?'done':doneCount>0?'partial':'';
+    const progTxt=allDone?'✓ Alle da':`${doneCount}/${total}`;
+    const vcls=g.vip?'bus-vehicle vip':'bus-vehicle';
+    const isCollapsed = collapsed[g.gid]===true || (allDone && collapsed[g.gid]!==false);
+    let blkCls='bus-block'+(allDone?' all-done':'')+((hideDone&&allDone)?' hidden-done':'')+(isCollapsed?' collapsed':'');
+    let hdrCls='bus-header'+(allDone?' all-done':dueClass?' '+dueClass:'');
+    const vi=getVehicleInfo(g.driver);
+    const plateEl=vi.plate?`<span class="bus-plate">🔖 ${vi.plate}</span>`:'';
+    const descEl=vi.desc?`<span class="bus-desc">${vi.desc}</span>`:'';
+
+    const phoneEl=phone
+      ? `<a class="bus-phone" href="tel:${phone}" onclick="event.stopPropagation()">📞 ${phone}</a>`
+      : `<span class="bus-phone-add" onclick="openBusPhone(event,'${g.gid}')">+ Nummer</span>`;
+
+    // WhatsApp text
+    const natList=g.nations.map(n=>`${n.name} (${n.pax}P, ${n.flight}, an ${n.arrive})`).join('%0A');
+    const waText=`*Gruppe ${idx+1} – Abfahrt ${g.departTime}*%0AFahrzeug: ${g.vehicle}%0AFahrer: ${driver.name}%0A%0A${natList}%0A%0AGesamt: ${totalPax} Personen`;
+    const waLink=phone?`https://wa.me/${phone.replace(/[^0-9]/g,'')}?text=${waText}`:`https://wa.me/?text=${waText}`;
+
+    let cards='';
+    // sort nations within group by effective arrival (newArrive overrides planned)
+    g.nations.sort((a,b)=>{
+      const na=getNS(a.id).newArrive||a.arrive;
+      const nb=getNS(b.id).newArrive||b.arrive;
+      const ma=toMin(na), mb=toMin(nb);
+      if(ma===null) return 1; if(mb===null) return -1;
+      return ma-mb;
+    });
+    g.nations.forEach(n=>{
+      const ns=getNS(n.id);
+      const ncCls=['nation-card',ns.done?'done':'',ns.newArrive?'delayed':''].filter(Boolean).join(' ');
+      const arriveEl=ns.newArrive
+        ? `<span class="nc-arrive-old">${n.arrive}</span><span class="nc-arrive nc-arrive-new">${ns.newArrive}</span>`
+        : `<span class="nc-arrive">${n.arrive}</span>`;
+      const termEl=n.term?`<span class="nc-term">${n.term}</span>`:'';
+      const hotelEl=n.hotel?`<span class="nc-hotel nc-hotel-${n.hotel.replace('&','').replace(/[^a-zA-Z]/g,'')}">🏨 ${n.hotel}</span>`:'';
+      const originEl=n.origin?`<span class="nc-origin">↗ ${n.origin}</span>`:'';
+      const notePreview=ns.note?`<div class="nc-note-preview">📝 ${ns.note}</div>`:'';
+      const hasNote=!!ns.note;
+      cards+=`
+        <div class="${ncCls}" id="nc-${n.id}" onclick="toggleNation('${n.id}','${dayKey}')">
+          <div class="nc-check"><svg class="nc-check-icon" width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M2.5 7L5.5 10L11.5 4" stroke="white" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div class="nc-info">
+            <div class="nc-top">${arriveEl}<span class="nc-name">${n.name}</span><span class="nc-flight">✈ ${n.flight}</span>${hotelEl}${termEl}</div>
+            <div class="nc-mid"><span class="nc-pax">👤 ${n.pax}</span>${originEl}</div>
+            ${notePreview}
+          </div>
+          <div class="nc-actions">
+            <button class="nc-btn${ns.newArrive?' active-delay':''}" onclick="toggleDelayRow(event,'${n.id}','${dayKey}')">⏱</button>
+            <button class="nc-btn${hasNote?' active-note':''}" onclick="toggleNoteRow(event,'${n.id}','${dayKey}')">📝</button>
+            <button class="nc-btn edit" onclick="toggleNatEdit(event,'${n.id}','${dayKey}')">✏️</button>
+            <button class="nc-btn move" onclick="parkNation(event,'${dayKey}','${g.gid}','${n.id}')">⇄</button>
+          </div>
+        </div>
+        <div class="nc-expand" id="dlrow-${n.id}">
+          <span class="exp-label">Erw. Ankunft</span>
+          <input class="exp-input" type="text" id="dlinput-${n.id}" placeholder="HH:MM" value="${ns.newArrive||''}">
+          <button class="btn-ok" onclick="saveDelay('${n.id}','${dayKey}')">OK</button>
+          ${ns.newArrive?`<button class="btn-clr" onclick="clearDelay('${n.id}','${dayKey}')">✕</button>`:''}
+        </div>
+        <div class="nc-note-expand" id="editrow-${n.id}">
+          <div class="exp-row"><span class="exp-label" style="width:62px;">Personen</span><input class="exp-input" style="width:60px;" type="number" id="editpax-${n.id}" value="${n.pax}" min="0" max="999"></div>
+          <div class="exp-row"><span class="exp-label" style="width:62px;">Hotel</span><select class="ge-select" id="edithotel-${n.id}">${HOTELS.map(h=>`<option value="${h}"${h===(n.hotel||'')?' selected':''}>${h||'— kein —'}</option>`).join('')}</select></div>
+          <div class="exp-row"><span class="exp-label" style="width:62px;">Abflug-Ort</span><input class="ge-input" type="text" id="editorigin-${n.id}" value="${n.origin||''}" placeholder="z.B. Paris"></div>
+          <div class="exp-row"><span class="exp-label" style="width:62px;">Terminal</span><select class="ge-select" id="editterm-${n.id}">${TERMINALS.map(t=>`<option value="${t}"${t===(n.term||'')?' selected':''}>${t||'— kein —'}</option>`).join('')}</select></div>
+          <div class="exp-row" style="justify-content:flex-end;"><button class="btn-ok" onclick="saveNatEdit('${n.id}','${dayKey}')">Speichern</button></div>
+        </div>
+        <div class="nc-note-expand" id="noterow-${n.id}">
+          <textarea class="note-input" id="noteinput-${n.id}" rows="2" placeholder="Notiz z.B. fährt Taxi …">${ns.note||''}</textarea>
+          <div class="exp-row"><button class="btn-ok" onclick="saveNote('${n.id}','${dayKey}')">Speichern</button>${ns.note?`<button class="btn-clr" onclick="clearNote('${n.id}','${dayKey}')">Löschen</button>`:''}</div>
+        </div>`;
+    });
+    if(total===0){
+      cards=`<div class="nation-card" style="cursor:default;"><div class="nc-info"><span class="nc-cotravel">Noch keine Nationen — über 🅿️ zuordnen oder ＋ Nation</span></div></div>`;
+    }
+
+    html+=`<div class="${blkCls}" id="blk-${g.gid}">
+      <div class="${hdrCls}" onclick="toggleCollapse('${g.gid}')">
+        <div class="bus-header-info">
+          <div class="bus-top">
+            <span class="group-num">Gruppe ${idx+1}</span>
+            ${g.abflug?'<span class="abflug-badge">✈ ABFLUG</span>':''}
+            <span class="bus-depart">${g.departTime}</span>
+            <span class="${vcls}">${g.vehicle}</span>
+            ${dueBadge}
+            <span class="bus-progress ${progCls}">${progTxt}</span>
+            <span class="collapse-chevron">▾</span>
+          </div>
+          <div class="bus-driver-row">
+            <span class="bus-driver-name">🚌 ${driver.name}</span>
+            <span class="bus-pax${overbooked?' overbooked':''}">👥 ${seatStr}</span>
+            ${phoneEl}
+            <a class="bus-wa" href="${waLink}" target="_blank" onclick="event.stopPropagation()">WhatsApp</a>
+            <button class="bus-edit-btn" onclick="toggleGroupEdit(event,'${g.gid}')">✏️ Bearb.</button>
+          </div>
+          ${plateEl||descEl?`<div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;">${plateEl}${descEl}</div>`:''}
+        </div>
+      </div>
+      <div class="group-edit" id="ge-${g.gid}">
+        <div class="ge-row"><span class="ge-label">Abfahrt</span><input class="ge-input" type="text" id="ge-time-${g.gid}" value="${g.departTime}" placeholder="HH:MM"></div>
+        <div class="ge-row"><span class="ge-label">Fahrer</span><select class="ge-select" id="ge-driver-${g.gid}">${driverOptions(g.driver)}</select></div>
+        <div class="ge-row"><span class="ge-label">Fahrzeug</span><input class="ge-input" type="text" id="ge-veh-${g.gid}" value="${g.vehicle}"></div>
+        <div class="ge-row"><span class="ge-label">Sitzplätze</span><input class="ge-input" type="number" id="ge-seats-${g.gid}" value="${g.seats!==undefined&&g.seats!==null?g.seats:''}" placeholder="${DRIVERS[g.driver]&&DRIVERS[g.driver].seats?'Standard: '+DRIVERS[g.driver].seats:'z.B. 8'}"></div>
+        <div class="ge-row" style="justify-content:flex-end;gap:8px;">
+          <button class="btn-clr" onclick="deleteGroup('${dayKey}','${g.gid}')">Gruppe löschen</button>
+          <button class="btn-ok" onclick="saveGroupEdit('${dayKey}','${g.gid}')">Speichern</button>
+        </div>
+      </div>
+      <div class="bus-phone-row" id="phrow-${g.gid}">
+        <span class="exp-label">${driver.name}</span>
+        <input class="ph-input" type="tel" id="phinput-${g.gid}" placeholder="Handynummer" value="${phone}">
+        <button class="btn-ok" onclick="saveBusPhone('${g.gid}','${g.driver}','${dayKey}')">OK</button>
+      </div>
+      ${cards}
+    </div>`;
+  });
+
+  container.innerHTML=html;
+  updateProgress();
+}
+
+function driverOptions(selected){
+  let opts='';
+  Object.entries(DRIVERS).forEach(([k,d])=>{
+    opts+=`<option value="${k}"${k===selected?' selected':''}>${d.name} (${d.vehicle})</option>`;
+  });
+  return opts;
+}
+
+// ── DRIVERS PAGE ─────────────────────────────────────────────────────────────
+function renderDrivers(){
+  const c=document.getElementById('page-drivers');
+  let html='<p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Nummer, Kennzeichen und Beschreibung erscheinen auf den Fahrt-Karten.</p>';
+  Object.entries(DRIVERS).forEach(([key,d])=>{
+    const phone=getPhone(key);
+    const vi=getVehicleInfo(key);
+    // count assignments
+    let cnt=0, nextTime=null;
+    ['fri','sat'].forEach(dk=>GROUPS[dk].forEach(g=>{ if(g.driver===key){ cnt++; if(!nextTime||g.departTime<nextTime) nextTime=g.departTime; } }));
+    const stats=cnt?`${cnt} Fahrt${cnt>1?'en':''}${nextTime?', nächste '+nextTime:''}`:'keine Fahrten';
+    html+=`<div class="driver-card" id="dc-${key}">
+      <div class="dc-name">${d.name}</div>
+      <div class="dc-vehicle">${d.vehicle}${d.seats?` · ${d.seats} Sitzplätze`:''}</div>
+      <div class="dc-stats">🚌 ${stats}</div>
+      ${vi.plate?`<div class="bus-plate" style="margin-bottom:2px;">🔖 ${vi.plate}</div>`:''}
+      ${vi.desc?`<div class="bus-desc" style="margin-bottom:8px;">${vi.desc}</div>`:''}
+      <div class="dc-row">
+        ${phone?`<a class="dc-phone-link" href="tel:${phone}">📞 ${phone}</a>`:`<span class="dc-phone-empty">Noch keine Nummer</span>`}
+        <button class="dc-edit" onclick="toggleDcEdit('${key}')">Bearbeiten</button>
+      </div>
+      <div class="dc-input-row" id="dci-${key}">
+        <div class="dc-input-group"><span class="dc-input-label">📞 Nummer</span><input class="dc-input" type="tel" id="dcf-phone-${key}" placeholder="Handynummer" value="${phone}"></div>
+        <div class="dc-input-group"><span class="dc-input-label">💺 Sitzplätze</span><input class="dc-input" type="number" id="dcf-seats-${key}" placeholder="z.B. 8" value="${d.seats!==undefined?d.seats:''}"></div>
+        <div class="dc-input-group"><span class="dc-input-label">🔖 Kennzeichen</span><input class="dc-input" type="text" id="dcf-plate-${key}" placeholder="B-XY 1234" value="${vi.plate}"></div>
+        <div class="dc-input-group"><span class="dc-input-label">🚐 Beschr.</span><textarea class="dc-textarea" id="dcf-desc-${key}" rows="2" placeholder="weißer Kleinbus …">${vi.desc}</textarea></div>
+        <div class="dc-input-group"><button class="btn-ok" onclick="saveDcAll('${key}')">Speichern</button></div>
+      </div>
+    </div>`;
+  });
+  c.innerHTML=html;
+}
+
+// ── NATION ACTIONS ───────────────────────────────────────────────────────────
+function toggleNation(id,dayKey){
+  if(!state[id]) state[id]={done:false,newArrive:null,note:''};
+  state[id].done=!state[id].done; saveState(); renderActive();
+}
+function closeAllExpand(){ document.querySelectorAll('.nc-expand.open,.nc-note-expand.open').forEach(r=>r.classList.remove('open')); }
+function toggleDelayRow(e,id,dayKey){ e.stopPropagation(); const row=document.getElementById('dlrow-'+id); const o=row.classList.contains('open'); closeAllExpand(); if(!o){row.classList.add('open'); setTimeout(()=>{const i=document.getElementById('dlinput-'+id);if(i)i.focus();},100);} }
+function toggleNoteRow(e,id,dayKey){ e.stopPropagation(); const row=document.getElementById('noterow-'+id); const o=row.classList.contains('open'); closeAllExpand(); if(!o){row.classList.add('open'); setTimeout(()=>{const i=document.getElementById('noteinput-'+id);if(i)i.focus();},100);} }
+function toggleNatEdit(e,id,dayKey){ e.stopPropagation(); const row=document.getElementById('editrow-'+id); const o=row.classList.contains('open'); closeAllExpand(); if(!o){row.classList.add('open');} }
+function saveDelay(id,dayKey){ const v=document.getElementById('dlinput-'+id).value.trim(); if(!state[id])state[id]={done:false,newArrive:null,note:''}; state[id].newArrive=v||null; saveState(); renderActive(); }
+function clearDelay(id,dayKey){ if(!state[id])state[id]={done:false,newArrive:null,note:''}; state[id].newArrive=null; saveState(); renderActive(); }
+function saveNatEdit(id,dayKey){
+  const pax=parseInt(document.getElementById('editpax-'+id).value);
+  const term=document.getElementById('editterm-'+id).value;
+  const origin=document.getElementById('editorigin-'+id).value.trim();
+  const hotel=document.getElementById('edithotel-'+id).value;
+  let nat=null;
+  GROUPS[dayKey].forEach(g=>{ const f=g.nations.find(n=>n.id===id); if(f)nat=f; });
+  if(!nat){ const f=parking[dayKey].find(n=>n.id===id); if(f)nat=f; }
+  if(nat){ if(!isNaN(pax)&&pax>=0) nat.pax=pax; nat.term=term; nat.origin=origin; nat.hotel=hotel; saveData(); renderActive(); }
+}
+function saveNote(id,dayKey){ const v=document.getElementById('noteinput-'+id).value.trim(); if(!state[id])state[id]={done:false,newArrive:null,note:''}; state[id].note=v; saveState(); renderActive(); }
+function clearNote(id,dayKey){ if(!state[id])state[id]={done:false,newArrive:null,note:''}; state[id].note=''; saveState(); renderActive(); }
+
+// ── PARK / MOVE ──────────────────────────────────────────────────────────────
+function parkNation(e,dayKey,gid,nid){
+  e.stopPropagation();
+  const grp=GROUPS[dayKey].find(g=>g.gid===gid);
+  const idx=grp.nations.findIndex(n=>n.id===nid);
+  if(idx<0) return;
+  const [nat]=grp.nations.splice(idx,1);
+  parking[dayKey].push(nat);
+  saveData(); renderActive();
+}
+function openAssignModal(dayKey,nid){
+  const groups=GROUPS[dayKey];
+  let html=`<div class="modal-title">Nation zuordnen</div>`;
+  groups.forEach((g,idx)=>{
+    const d=DRIVERS[g.driver]||{name:g.driver};
+    html+=`<div class="modal-opt" onclick="assignTo('${dayKey}','${nid}','${g.gid}')"><b>Gruppe ${idx+1}</b> · ${g.departTime} · ${g.vehicle} · ${d.name}</div>`;
+  });
+  html+=`<div class="modal-opt" style="border-color:#1e6b3a;color:#5dd67a;" onclick="assignToNew('${dayKey}','${nid}')">＋ In neue Gruppe</div>`;
+  html+=`<button class="modal-cancel" onclick="closeModal()">Abbrechen</button>`;
+  document.getElementById('modalContent').innerHTML=html;
+  document.getElementById('modalBg').classList.add('open');
+}
+function assignTo(dayKey,nid,gid){
+  const pIdx=parking[dayKey].findIndex(n=>n.id===nid);
+  if(pIdx<0) return;
+  const [nat]=parking[dayKey].splice(pIdx,1);
+  GROUPS[dayKey].find(g=>g.gid===gid).nations.push(nat);
+  saveData(); closeModal(); renderActive();
+}
+function assignToNew(dayKey,nid){
+  const pIdx=parking[dayKey].findIndex(n=>n.id===nid);
+  if(pIdx<0) return;
+  const [nat]=parking[dayKey].splice(pIdx,1);
+  const newGid='new'+Date.now();
+  GROUPS[dayKey].push({gid:newGid,departTime:nat.arrive&&nat.arrive!=='—'?nat.arrive:'12:00',driver:'fabian',vehicle:DRIVERS.fabian.vehicle,vip:false,nations:[nat]});
+  sortGroups(dayKey);
+  saveData(); closeModal(); renderActive();
+}
+function closeModal(){ document.getElementById('modalBg').classList.remove('open'); }
+
+// ── GROUP EDIT ───────────────────────────────────────────────────────────────
+function toggleGroupEdit(e,gid){ e.stopPropagation(); const r=document.getElementById('ge-'+gid); document.querySelectorAll('.group-edit.open').forEach(x=>{if(x.id!=='ge-'+gid)x.classList.remove('open');}); r.classList.toggle('open'); }
+function toggleCollapse(gid){
+  // determine current effective state
+  const blk=document.getElementById('blk-'+gid);
+  const isNow=blk.classList.contains('collapsed');
+  collapsed[gid]=!isNow; // explicit: false=expanded, true=collapsed
+  saveCollapsed(); renderActive();
+}
+function saveGroupEdit(dayKey,gid){
+  const g=GROUPS[dayKey].find(x=>x.gid===gid);
+  const t=document.getElementById('ge-time-'+gid).value.trim();
+  const dr=document.getElementById('ge-driver-'+gid).value;
+  const veh=document.getElementById('ge-veh-'+gid).value.trim();
+  const seatsVal=document.getElementById('ge-seats-'+gid).value.trim();
+  if(t) g.departTime=t;
+  g.driver=dr;
+  g.vehicle=veh||(DRIVERS[dr]?DRIVERS[dr].vehicle:g.vehicle);
+  g.seats = seatsVal==='' ? null : parseInt(seatsVal);
+  g.vip=(DRIVERS[dr]&&DRIVERS[dr].vehicle==='VIP');
+  sortGroups(dayKey);
+  saveData(); renderActive();
+}
+function deleteGroup(dayKey,gid){
+  const g=GROUPS[dayKey].find(x=>x.gid===gid);
+  if(g && g.nations.length){ parking[dayKey].push(...g.nations); }
+  GROUPS[dayKey]=GROUPS[dayKey].filter(x=>x.gid!==gid);
+  saveData(); renderActive();
+}
+function addNewGroup(){
+  const dayKey=currentTab==='drivers'?'fri':currentTab;
+  let html=`<div class="modal-title">Neue Gruppe anlegen</div>
+    <div class="ge-row" style="margin-bottom:8px;"><span class="ge-label">Abfahrt</span><input class="ge-input" type="text" id="ng-time" placeholder="HH:MM"></div>
+    <div class="ge-row" style="margin-bottom:8px;"><span class="ge-label">Fahrer</span><select class="ge-select" id="ng-driver" onchange="ngDriverChange()">${driverOptions('fabian')}</select></div>
+    <div class="ge-row" style="margin-bottom:8px;"><span class="ge-label">Fahrzeug</span><input class="ge-input" type="text" id="ng-veh" value="${DRIVERS.fabian.vehicle}"></div>
+    <div class="ge-row" style="margin-bottom:14px;"><span class="ge-label">Sitzplätze</span><input class="ge-input" type="number" id="ng-seats" value="${DRIVERS.fabian.seats||''}" placeholder="z.B. 8"></div>
+    <button class="modal-danger" style="background:var(--accent);" onclick="createGroup('${dayKey}')">Gruppe anlegen</button>
+    <button class="modal-cancel" onclick="closeModal()">Abbrechen</button>`;
+  document.getElementById('modalContent').innerHTML=html;
+  document.getElementById('modalBg').classList.add('open');
+  setTimeout(()=>{const i=document.getElementById('ng-time');if(i)i.focus();},100);
+}
+function ngDriverChange(){
+  const dr=document.getElementById('ng-driver').value;
+  if(DRIVERS[dr]){
+    document.getElementById('ng-veh').value=DRIVERS[dr].vehicle;
+    document.getElementById('ng-seats').value=DRIVERS[dr].seats!==undefined?DRIVERS[dr].seats:'';
+  }
+}
+function createGroup(dayKey){
+  const t=document.getElementById('ng-time').value.trim();
+  if(!t){ alert('Bitte eine Abfahrtszeit eingeben'); return; }
+  const dr=document.getElementById('ng-driver').value;
+  const veh=document.getElementById('ng-veh').value.trim()||(DRIVERS[dr]?DRIVERS[dr].vehicle:'');
+  const sv=document.getElementById('ng-seats').value.trim();
+  const newGid='new'+Date.now();
+  GROUPS[dayKey].push({gid:newGid,departTime:t,driver:dr,vehicle:veh,vip:(DRIVERS[dr]&&DRIVERS[dr].vehicle==='VIP'),seats:sv===''?null:parseInt(sv),nations:[]});
+  sortGroups(dayKey);
+  saveData(); closeModal();
+  if(currentTab==='drivers') showTab(dayKey); else renderActive();
+}
+function addNewNation(){
+  const dayKey=currentTab==='drivers'?'fri':currentTab;
+  let html=`<div class="modal-title">Neue Nation anlegen</div>
+    <div class="ge-row" style="margin-bottom:8px;"><span class="ge-label">Name</span><input class="ge-input" type="text" id="nn-name" placeholder="z.B. GBR-02"></div>
+    <div class="ge-row" style="margin-bottom:8px;"><span class="ge-label">Ankunft</span><input class="ge-input" type="text" id="nn-arrive" placeholder="HH:MM"></div>
+    <div class="ge-row" style="margin-bottom:8px;"><span class="ge-label">Personen</span><input class="ge-input" type="number" id="nn-pax" placeholder="Anzahl" min="0"></div>
+    <div class="ge-row" style="margin-bottom:8px;"><span class="ge-label">Hotel</span><select class="ge-select" id="nn-hotel">${HOTELS.map(h=>`<option value="${h}">${h||'— kein —'}</option>`).join('')}</select></div>
+    <div class="ge-row" style="margin-bottom:8px;"><span class="ge-label">Flug</span><input class="ge-input" type="text" id="nn-flight" placeholder="z.B. BA123"></div>
+    <div class="ge-row" style="margin-bottom:8px;"><span class="ge-label">Abflug-Ort</span><input class="ge-input" type="text" id="nn-origin" placeholder="z.B. Paris"></div>
+    <div class="ge-row" style="margin-bottom:14px;"><span class="ge-label">Terminal</span><select class="ge-select" id="nn-term">${TERMINALS.map(t=>`<option value="${t}">${t||'— kein —'}</option>`).join('')}</select></div>
+    <button class="modal-danger" style="background:var(--accent);" onclick="createNation('${dayKey}')">Anlegen → Parkplatz</button>
+    <button class="modal-cancel" onclick="closeModal()">Abbrechen</button>`;
+  document.getElementById('modalContent').innerHTML=html;
+  document.getElementById('modalBg').classList.add('open');
+  setTimeout(()=>{const i=document.getElementById('nn-name');if(i)i.focus();},100);
+}
+function createNation(dayKey){
+  const name=document.getElementById('nn-name').value.trim();
+  if(!name){ alert('Bitte einen Namen eingeben'); return; }
+  const arrive=document.getElementById('nn-arrive').value.trim()||'—';
+  const pax=parseInt(document.getElementById('nn-pax').value)||0;
+  const flight=document.getElementById('nn-flight').value.trim()||'—';
+  const term=document.getElementById('nn-term').value;
+  const origin=document.getElementById('nn-origin').value.trim();
+  const hotel=document.getElementById('nn-hotel').value;
+  const id='custom'+Date.now();
+  parking[dayKey].push({id,name,arrive,pax,flight,term,origin,hotel});
+  saveData(); closeModal(); renderActive();
+}
+
+// ── PHONE / DRIVER EDIT ──────────────────────────────────────────────────────
+function openBusPhone(e,gid){ e.stopPropagation(); const r=document.getElementById('phrow-'+gid); r.classList.toggle('open'); if(r.classList.contains('open')) setTimeout(()=>{const i=document.getElementById('phinput-'+gid);if(i)i.focus();},100); }
+function saveBusPhone(gid,driverKey,dayKey){ phones[driverKey]=document.getElementById('phinput-'+gid).value.trim(); savePhones(); renderAll(); showTab(dayKey); }
+function toggleDcEdit(key){ const c=document.getElementById('dc-'+key); c.classList.toggle('dc-editing'); if(c.classList.contains('dc-editing')) setTimeout(()=>{const i=document.getElementById('dcf-phone-'+key);if(i)i.focus();},100); }
+function saveDcAll(key){ phones[key]=document.getElementById('dcf-phone-'+key).value.trim(); if(!vehicleInfo[key])vehicleInfo[key]={plate:'',desc:''}; vehicleInfo[key].plate=document.getElementById('dcf-plate-'+key).value.trim(); vehicleInfo[key].desc=document.getElementById('dcf-desc-'+key).value.trim(); const sv=document.getElementById('dcf-seats-'+key).value.trim(); if(DRIVERS[key]) DRIVERS[key].seats = sv===''?undefined:parseInt(sv); savePhones(); saveVI(); saveData(); renderAll(); }
+
+// ── HIDE DONE / RESET ────────────────────────────────────────────────────────
+function toggleHideDone(){ hideDone=!hideDone; document.getElementById('hideDoneBtn').classList.toggle('active',hideDone); renderActive(); }
+function confirmReset(){
+  let html=`<div class="modal-title">⚠️ Wirklich zurücksetzen?</div>
+    <div class="modal-warn">Das setzt <b>alle</b> Gruppen, Zuordnungen, Abhakungen, Verspätungen und Notizen auf den Original-Plan (Stand 19.06. 23:50) zurück. Telefonnummern und Kennzeichen bleiben erhalten.<br><br>Dieser Schritt kann <b>nicht rückgängig</b> gemacht werden.</div>
+    <button class="modal-danger" onclick="doReset()">Ja, alles zurücksetzen</button>
+    <button class="modal-cancel" onclick="closeModal()">Abbrechen</button>`;
+  document.getElementById('modalContent').innerHTML=html;
+  document.getElementById('modalBg').classList.add('open');
+}
+function doReset(){
+  GROUPS=JSON.parse(JSON.stringify(GROUPS_DEFAULT));
+  parking={fri:[],sat:[]};
+  state={}; collapsed={};
+  sortGroups('fri'); sortGroups('sat');
+  saveData(); saveState(); saveCollapsed();
+  closeModal(); renderAll(); showTab(currentTab==='drivers'?'fri':currentTab);
+}
+
+// ── PROGRESS ─────────────────────────────────────────────────────────────────
+function updateProgress(){
+  const all=[...GROUPS.fri,...GROUPS.sat].flatMap(g=>g.nations).concat(parking.fri,parking.sat);
+  const done=all.filter(n=>getNS(n.id).done).length;
+  const pct=all.length?Math.round(done/all.length*100):0;
+  document.getElementById('progressBar').style.width=pct+'%';
+  document.getElementById('progressText').textContent=`${done} von ${all.length} angekommen`;
+  document.getElementById('progressPct').textContent=pct+' %';
+}
+
+// ── TABS ─────────────────────────────────────────────────────────────────────
+let currentTab='fri';
+function renderActive(){ if(currentTab==='drivers'){renderDrivers();} else {renderDay(currentTab);} }
+function renderAll(){ renderDay('fri'); renderDay('sat'); renderDrivers(); }
+function showTab(tab){
+  currentTab=tab;
+  document.querySelectorAll('.page,.drivers-page').forEach(d=>d.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(tab==='drivers'?'page-drivers':'page-'+tab).classList.add('active');
+  document.querySelectorAll('.tab')[tab==='fri'?0:tab==='sat'?1:2].classList.add('active');
+  document.getElementById('toolbar').style.display=tab==='drivers'?'none':'flex';
+  renderActive();
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+loadData();
+sortGroups('fri'); sortGroups('sat');
+renderAll();
+updateClock();
+setInterval(()=>{ updateClock(); renderActive(); }, 60000);
+showTab('fri');
+</script>
+</body>
+</html>
