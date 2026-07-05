@@ -33,15 +33,15 @@ Hotelzuteilung). React + Vite + Supabase.
 
 ## Voraussetzungen im Supabase-Projekt
 
-- Schema V1 ist eingespielt (14 Tabellen mit RLS), siehe `datenmodell_v1.md`.
+- Schema V1 ist eingespielt (14 Tabellen mit RLS), siehe
+  `docs/delego_schema_v1.sql` bzw. `docs/datenmodell_v1.md`.
+- **Zusätzlich muss `docs/rpc_create_organization.sql` eingespielt werden**
+  (SQL Editor → Run). Die RPC legt Organisation + Admin-Mitgliedschaft atomar
+  an; das Schema selbst definiert sie nicht, verlangt sie aber (die
+  `mem_write`-Policy setzt die Admin-Rolle bereits voraus – Henne-Ei beim
+  Onboarding).
 - E-Mail-Auth ist aktiviert. Ist „Confirm email" eingeschaltet, müssen sich
   neue Nutzer erst per Bestätigungslink verifizieren.
-- Die RLS-Policies müssen erlauben, dass ein angemeldeter Nutzer eine
-  `organizations`-Zeile anlegt und sich selbst anschließend als
-  `memberships`-Zeile mit `role = 'admin'` einträgt (Henne-Ei beim ersten
-  Anlegen). Falls die Policies das nicht direkt zulassen, gehört das in eine
-  `security definer`-Funktion (RPC) – die Fehlermeldung erscheint dann direkt
-  im Formular.
 
 ## Struktur
 

@@ -38,30 +38,21 @@ export default function DashboardPage() {
     setError(null)
     setBusy(true)
 
-    const { data: org, error: orgError } = await supabase
-      .from('organizations')
-      .insert({ name, slug: slugify(name) })
-      .select()
-      .single()
+    // Legt Organisation + eigene Admin-Mitgliedschaft atomar an
+    // (security definer, siehe docs/rpc_create_organization.sql) –
+    // direkte Inserts scheitern an den RLS-Policies (mem_write
+    // verlangt bereits die Admin-Rolle).
+    const { error: rpcError } = await supabase.rpc('create_organization', {
+      org_name: name,
+      org_slug: slugify(name),
+    })
 
-    if (orgError) {
-      setError(orgError.message)
-      setBusy(false)
-      return
-    }
-
-    const { error: memberError } = await supabase
-      .from('memberships')
-      .insert({ user_id: user.id, organization_id: org.id, role: 'admin' })
-
-    if (memberError) {
-      setError(
-        `Organisation wurde angelegt, aber die Mitgliedschaft nicht: ${memberError.message}`
-      )
+    if (rpcError) {
+      setError(rpcError.message)
     } else {
       setName('')
+      await loadOrgs()
     }
-    await loadOrgs()
     setBusy(false)
   }
 
