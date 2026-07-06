@@ -83,18 +83,20 @@ export default function OrganizationPage() {
       )}
       <ul className="item-list">
         {tournaments?.map((t) => (
-          <li key={t.id} className="item">
-            <div>
-              <strong>{t.name}</strong>
-              <div className="muted">
-                {t.starts_on} – {t.ends_on}
-                {t.venue ? ` · ${t.venue}` : ''}
-                {t.submission_deadline
-                  ? ` · Meldeschluss: ${new Date(t.submission_deadline).toLocaleString('de-DE')}`
-                  : ''}
+          <li key={t.id}>
+            <Link to={`/tournament/${t.id}`} className="item">
+              <div>
+                <strong>{t.name}</strong>
+                <div className="muted">
+                  {t.starts_on} – {t.ends_on}
+                  {t.venue ? ` · ${t.venue}` : ''}
+                  {t.submission_deadline
+                    ? ` · Meldeschluss: ${new Date(t.submission_deadline).toLocaleString('de-DE')}`
+                    : ''}
+                </div>
               </div>
-            </div>
-            <span className="badge">{t.status}</span>
+              <span className="badge">{t.status}</span>
+            </Link>
           </li>
         ))}
       </ul>

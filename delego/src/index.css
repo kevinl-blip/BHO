@@ -197,3 +197,77 @@ a.item:hover {
   color: var(--muted);
   white-space: nowrap;
 }
+
+select {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+  background: #fff;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* Delegationszeile mit mehreren Blöcken untereinander */
+.item-col {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.link-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.link-row input {
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--muted);
+  background: var(--bg);
+}
+
+/* Öffentliches Portal */
+.portal {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+.portal-head {
+  text-align: center;
+  margin-bottom: 1.25rem;
+}
+
+.portal-head h1 {
+  margin: 0.5rem 0 0.25rem;
+}
+
+.banner {
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.banner-open {
+  background: #eef4ff;
+  border: 1px solid #cddffb;
+  color: #174ad4;
+}
+
+.banner-locked {
+  background: #fdeceb;
+  border: 1px solid #f6c9c6;
+  color: #b3261e;
+}

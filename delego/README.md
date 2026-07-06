@@ -3,11 +3,28 @@
 Multi-Tenant-Web-App für Turnier-Logistik (Delegationen, Anmeldung, Transfers,
 Hotelzuteilung). React + Vite + Supabase.
 
-## Stand (Meilenstein 1)
+## Stand
+
+**Meilenstein 1**
 
 - Login / Registrierung (Supabase Auth, E-Mail + Passwort)
 - Organisation anlegen (Ersteller wird automatisch `admin`-Mitglied)
 - Turnier anlegen (Name, Zeitraum, Austragungsort, Meldeschluss, Status `draft`)
+
+**Meilenstein 2 – Delegations-Verwaltung & Portal**
+
+- Veranstalter (in der Turnier-Ansicht): Delegationen anlegen/bearbeiten/löschen,
+  pro Delegation ein Zugangslink mit Token zum Kopieren, Link neu erzeugen
+  (macht den alten sofort ungültig).
+- Öffentliches Delegationsportal unter `/portal/<token>` – **ohne Login**.
+  Die Delegation trägt ihre Personen ein und bearbeitet sie bis zum
+  Meldeschluss; danach serverseitig schreibgeschützt.
+- Backend: zwei Supabase Edge Functions (`portal-session`, `portal-persons`),
+  die mit `service_role` laufen. Die gesamte Zugriffskontrolle steckt im
+  Function-Code: Token → genau eine `delegation_id`, jede Query darauf
+  gefiltert; Deadline (`tournaments.submission_deadline`) wird bei jedem
+  Schreibvorgang geprüft (403 nach Ablauf). RLS bleibt für die Tabellen aktiv;
+  das Portal fasst sie nie direkt an.
 
 ## Setup
 
@@ -43,14 +60,91 @@ Hotelzuteilung). React + Vite + Supabase.
 - E-Mail-Auth ist aktiviert. Ist „Confirm email" eingeschaltet, müssen sich
   neue Nutzer erst per Bestätigungslink verifizieren.
 
+## Edge Functions deployen (für Meilenstein 2 / das Portal)
+
+Das Delegationsportal funktioniert erst, wenn die beiden Edge Functions im
+Supabase-Projekt liegen. Die Functions bringen ihre Secrets automatisch mit
+(`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` werden von Supabase gesetzt) – du
+musst nichts zusätzlich konfigurieren.
+
+**Schritt für Schritt:**
+
+1. Supabase CLI installieren (falls noch nicht vorhanden):
+
+   ```sh
+   npm install -g supabase
+   # oder: brew install supabase/tap/supabase
+   ```
+
+2. Bei Supabase anmelden (öffnet den Browser):
+
+   ```sh
+   supabase login
+   ```
+
+3. In den `delego/`-Ordner wechseln und das lokale Projekt mit dem
+   Cloud-Projekt verknüpfen (Project-Ref = `rlrgbrkebsnpirbtocrk`):
+
+   ```sh
+   cd delego
+   supabase link --project-ref rlrgbrkebsnpirbtocrk
+   ```
+
+4. Beide Functions deployen. **Wichtig: `--no-verify-jwt`**, weil das Portal
+   öffentlich ist (kein Login) – die Authentifizierung macht unser Token-Check
+   im Function-Code, nicht Supabase-Auth:
+
+   ```sh
+   supabase functions deploy portal-session --no-verify-jwt
+   supabase functions deploy portal-persons --no-verify-jwt
+   ```
+
+5. Kurz prüfen (ungültiger Token muss `404 {"error":"invalid token"}` liefern;
+   `<ANON_KEY>` durch deinen anon/publishable Key ersetzen):
+
+   ```sh
+   curl -i -X POST \
+     https://rlrgbrkebsnpirbtocrk.supabase.co/functions/v1/portal-session \
+     -H "Authorization: Bearer <ANON_KEY>" \
+     -H "Content-Type: application/json" \
+     -d '{"token":"nope"}'
+   ```
+
+Neu deployen nach Code-Änderungen: einfach Schritt 4 erneut ausführen.
+
 ## Struktur
 
 ```
 src/
   lib/supabaseClient.js      Supabase-Client (liest VITE_SUPABASE_URL / _ANON_KEY)
+  lib/portalApi.js           Client für die Portal-Edge-Functions (Token im Body)
   context/AuthContext.jsx    Session-Handling (getSession + onAuthStateChange)
   pages/LoginPage.jsx        Anmelden / Registrieren
   pages/DashboardPage.jsx    Organisationen auflisten + anlegen
   pages/OrganizationPage.jsx Turniere einer Organisation auflisten + anlegen
-  App.jsx                    Routing, geschützter Bereich mit Topbar
+  pages/TournamentPage.jsx   Delegationen verwalten + Zugangslinks (Veranstalter)
+  pages/PortalPage.jsx       Öffentliches Delegationsportal (ohne Login, EN)
+  App.jsx                    Routing (öffentlich: /login, /portal/:token)
+
+supabase/functions/
+  _shared/cors.ts            CORS-Header + json()-Helper
+  _shared/portal.ts          Token-Auflösung + Personen-Query (service_role)
+  portal-session/index.ts    POST { token } → Kontext + Personenliste
+  portal-persons/index.ts    POST { token, action, person } → CRUD, deadline-geschützt
 ```
+
+## Sicherheitsmodell des Portals (Kurzfassung)
+
+- Der `access_token` (UUIDv4, 122 Bit) ist ein Bearer-Credential: Wer den Link
+  hat, darf genau diese Delegation bearbeiten. Bewusst so (Delegationen haben
+  keine Accounts).
+- Das Portal spricht **ausschließlich** die Edge Functions an, nie die Tabellen
+  direkt. Die Functions laufen mit `service_role` (umgeht RLS) – deshalb liegt
+  die komplette Zugriffskontrolle im Code: Token → eine `delegation_id`, jede
+  Query strikt darauf gefiltert, `update`/`delete` zusätzlich mit
+  `.eq('delegation_id', …)` gegen Cross-Delegation-Zugriff.
+- Der Token wird im **POST-Body** übertragen (nicht als URL-Query), damit er
+  nicht in Access-/Referer-Logs landet.
+- Die Meldeschluss-Sperre ist serverseitig autoritativ: `portal-persons` lehnt
+  nach Ablauf jeden Schreibvorgang mit **403** ab. Das `read_only`-Flag im
+  Frontend ist reine UX.
