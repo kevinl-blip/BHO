@@ -57,6 +57,12 @@ Hotelzuteilung). React + Vite + Supabase.
   an; das Schema selbst definiert sie nicht, verlangt sie aber (die
   `mem_write`-Policy setzt die Admin-Rolle bereits voraus – Henne-Ei beim
   Onboarding).
+- **Und `docs/grants_v1.sql` einspielen** (SQL Editor → Run). Neu angelegte
+  Supabase-Projekte setzen die Default-Tabellen-GRANTs für `authenticated`
+  nicht mehr automatisch – ohne diese Datei scheitert schon das Dashboard mit
+  `permission denied for table memberships`. Die GRANTs sind sicher, weil RLS
+  auf allen Tabellen aktiv bleibt und die eigentliche Zeilen-Sperre ist
+  (Details oben in der Datei).
 - E-Mail-Auth ist aktiviert. Ist „Confirm email" eingeschaltet, müssen sich
   neue Nutzer erst per Bestätigungslink verifizieren.
 
