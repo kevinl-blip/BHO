@@ -1,0 +1,13 @@
+# Minimale Supabase-CLI-Konfiguration, damit `supabase functions deploy`
+# ohne vorheriges `supabase init` funktioniert. Der tatsächliche Projektbezug
+# entsteht über `supabase link --project-ref rlrgbrkebsnpirbtocrk`.
+project_id = "delego"
+
+# Edge Functions des Delegationsportals. verify_jwt = false, weil das Portal
+# öffentlich ist (Auth über den access_token im Function-Code). Das entspricht
+# dem --no-verify-jwt beim Deploy und dokumentiert es zugleich versioniert.
+[functions.portal-session]
+verify_jwt = false
+
+[functions.portal-persons]
+verify_jwt = false
