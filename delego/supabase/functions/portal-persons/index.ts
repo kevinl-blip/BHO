@@ -29,9 +29,33 @@ function cleanFields(p: PersonInput) {
   const notes = typeof p.notes === 'string' && p.notes.trim() ? p.notes.trim() : null
   const custom_fields =
     p.custom_fields && typeof p.custom_fields === 'object' && !Array.isArray(p.custom_fields)
-      ? p.custom_fields
+      ? (p.custom_fields as Record<string, unknown>)
       : {}
   return { last_name, first_name, role, gender, notes, custom_fields }
+}
+
+type FieldDef = { key?: unknown; label?: unknown; type?: unknown; required?: unknown }
+
+// Serverseitige Pflichtfeld-Prüfung – autoritativ, spiegelt firstMissingRequired
+// im Frontend (src/lib/personFields.js). Quelle ist dieselbe Konfiguration, die
+// die Delegation im Portal sieht (tournaments.settings.person_fields). 'boolean'
+// ist von 'required' ausgenommen (hat immer einen Wert). Gibt das Label des
+// ersten fehlenden Pflichtfeldes zurück oder null.
+function firstMissingRequired(
+  personFields: unknown,
+  custom: Record<string, unknown>,
+): string | null {
+  if (!Array.isArray(personFields)) return null
+  for (const f of personFields as FieldDef[]) {
+    if (!f || f.required !== true || f.type === 'boolean') continue
+    const key = typeof f.key === 'string' ? f.key : ''
+    if (!key) continue
+    const v = custom?.[key]
+    if (v === undefined || v === null || String(v).trim() === '') {
+      return typeof f.label === 'string' && f.label ? f.label : key
+    }
+  }
+  return null
 }
 
 Deno.serve(async (req) => {
@@ -53,12 +77,18 @@ Deno.serve(async (req) => {
       )
     }
 
+    const personFields = ctx.tournament.settings?.person_fields
+
     if (action === 'create') {
       const f = cleanFields(person ?? {})
       if (!f.last_name || !f.first_name) {
         return json({ error: 'last_name und first_name sind Pflicht' }, 400)
       }
       if (!ROLES.includes(f.role)) return json({ error: 'ungültige Rolle' }, 400)
+      const missing = firstMissingRequired(personFields, f.custom_fields)
+      if (missing) {
+        return json({ error: 'required_field_missing', field: missing, message: `Pflichtfeld fehlt: ${missing}` }, 400)
+      }
 
       const { error } = await admin
         .from('persons')
@@ -81,6 +111,10 @@ Deno.serve(async (req) => {
         return json({ error: 'last_name und first_name sind Pflicht' }, 400)
       }
       if (!ROLES.includes(f.role)) return json({ error: 'ungültige Rolle' }, 400)
+      const missing = firstMissingRequired(personFields, f.custom_fields)
+      if (missing) {
+        return json({ error: 'required_field_missing', field: missing, message: `Pflichtfeld fehlt: ${missing}` }, 400)
+      }
 
       const { data, error } = await admin
         .from('persons')

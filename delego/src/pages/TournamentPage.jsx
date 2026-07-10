@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
+import PersonFieldsEditor from '../components/PersonFieldsEditor'
+import DelegationPersons from '../components/DelegationPersons'
 
 const emptyForm = {
   name: '',
@@ -27,12 +29,18 @@ export default function TournamentPage() {
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
   const [copiedId, setCopiedId] = useState(null)
+  const [counts, setCounts] = useState({})
+  const [expandedId, setExpandedId] = useState(null)
+
+  const personFields = Array.isArray(tournament?.settings?.person_fields)
+    ? tournament.settings.person_fields
+    : []
 
   const load = useCallback(async () => {
     const [tRes, dRes] = await Promise.all([
       supabase
         .from('tournaments')
-        .select('id, name, starts_on, ends_on, venue, status, submission_deadline, organization_id')
+        .select('id, name, starts_on, ends_on, venue, status, submission_deadline, settings, organization_id')
         .eq('id', tournamentId)
         .single(),
       supabase
@@ -43,9 +51,45 @@ export default function TournamentPage() {
     ])
     if (tRes.error) setError(tRes.error.message)
     else setTournament(tRes.data)
-    if (dRes.error) setError(dRes.error.message)
-    else setDelegations(dRes.data)
+    if (dRes.error) {
+      setError(dRes.error.message)
+      return
+    }
+    setDelegations(dRes.data)
+
+    // Personenzahl pro Delegation für die Meldeübersicht.
+    const ids = dRes.data.map((d) => d.id)
+    if (ids.length === 0) {
+      setCounts({})
+      return
+    }
+    const { data: pRows, error: pErr } = await supabase
+      .from('persons')
+      .select('delegation_id')
+      .in('delegation_id', ids)
+    if (pErr) {
+      setError(pErr.message)
+      return
+    }
+    setCounts(
+      (pRows ?? []).reduce((acc, r) => {
+        acc[r.delegation_id] = (acc[r.delegation_id] ?? 0) + 1
+        return acc
+      }, {}),
+    )
   }, [tournamentId])
+
+  // Personenfelder in tournaments.settings zurückschreiben (Merge, um andere
+  // settings-Schlüssel wie fees/meal_slots nicht zu überschreiben).
+  async function saveFields(nextFields) {
+    const nextSettings = { ...(tournament.settings ?? {}), person_fields: nextFields }
+    const { error: upErr } = await supabase
+      .from('tournaments')
+      .update({ settings: nextSettings })
+      .eq('id', tournamentId)
+    if (upErr) throw new Error(upErr.message)
+    setTournament((t) => ({ ...t, settings: nextSettings }))
+  }
 
   useEffect(() => { load() }, [load])
 
@@ -153,41 +197,61 @@ export default function TournamentPage() {
         </p>
       )}
 
-      <h3>Delegationen</h3>
+      <h3>Delegationen &amp; Meldestand</h3>
       {delegations === null && <p className="muted">Lade …</p>}
       {delegations?.length === 0 && <p className="muted">Noch keine Delegationen angelegt.</p>}
 
       <ul className="item-list">
-        {delegations?.map((d) => (
-          <li key={d.id} className="item item-col">
-            <div className="item-row">
-              <div>
-                <strong>{d.name}</strong>
-                {d.country_code ? <span className="muted"> · {d.country_code}</span> : null}
-                <div className="muted">
-                  {d.contact_name || '—'}
-                  {d.contact_email ? ` · ${d.contact_email}` : ''}
-                  {d.contact_phone ? ` · ${d.contact_phone}` : ''}
+        {delegations?.map((d) => {
+          const count = counts[d.id] ?? 0
+          const expanded = expandedId === d.id
+          return (
+            <li key={d.id} className="item item-col">
+              <div className="item-row">
+                <div>
+                  <strong>{d.name}</strong>
+                  {d.country_code ? <span className="muted"> · {d.country_code}</span> : null}
+                  <div className="muted">
+                    {d.contact_name || '—'}
+                    {d.contact_email ? ` · ${d.contact_email}` : ''}
+                    {d.contact_phone ? ` · ${d.contact_phone}` : ''}
+                  </div>
+                </div>
+                <div className="meld-status">
+                  <span className={count === 0 ? 'count count-zero' : 'count'}>
+                    {count} {count === 1 ? 'Person' : 'Personen'}
+                  </span>
+                  <span className="badge">{d.status}</span>
                 </div>
               </div>
-              <span className="badge">{d.status}</span>
-            </div>
 
-            <div className="link-row">
-              <input readOnly value={portalLink(d.access_token)} onFocus={(e) => e.target.select()} />
-              <button onClick={() => copyLink(d)}>
-                {copiedId === d.id ? 'Kopiert ✓' : 'Kopieren'}
-              </button>
-            </div>
+              <div className="link-row">
+                <input readOnly value={portalLink(d.access_token)} onFocus={(e) => e.target.select()} />
+                <button onClick={() => copyLink(d)}>
+                  {copiedId === d.id ? 'Kopiert ✓' : 'Kopieren'}
+                </button>
+              </div>
 
-            <div className="actions">
-              <button onClick={() => startEdit(d)}>Bearbeiten</button>
-              <button onClick={() => handleRegenerate(d)}>Link neu erzeugen</button>
-              <button onClick={() => handleDelete(d)}>Löschen</button>
-            </div>
-          </li>
-        ))}
+              <div className="actions">
+                <button onClick={() => setExpandedId(expanded ? null : d.id)}>
+                  {expanded ? 'Personen ausblenden' : `Personen anzeigen (${count})`}
+                </button>
+                <button onClick={() => startEdit(d)}>Bearbeiten</button>
+                <button onClick={() => handleRegenerate(d)}>Link neu erzeugen</button>
+                <button onClick={() => handleDelete(d)}>Löschen</button>
+              </div>
+
+              {expanded && (
+                <div className="person-panel">
+                  <DelegationPersons delegationId={d.id} personFields={personFields} />
+                </div>
+              )}
+            </li>
+          )
+        })}
       </ul>
+
+      {tournament && <PersonFieldsEditor fields={personFields} onChange={saveFields} />}
 
       <div className="card">
         <h3>{editingId ? 'Delegation bearbeiten' : 'Neue Delegation'}</h3>
