@@ -6,6 +6,7 @@ import {
   portalSession,
   portalUpdatePerson,
 } from '../lib/portalApi'
+import { firstMissingRequired } from '../lib/personFields'
 
 const ROLES = ['athlete', 'coach', 'official']
 
@@ -88,9 +89,23 @@ export default function PortalPage() {
       setForm((f) => ({ ...f, custom_fields: { ...f.custom_fields, [key]: e.target.value } }))
   }
 
+  function setCustomBool(key) {
+    return (e) =>
+      setForm((f) => ({ ...f, custom_fields: { ...f.custom_fields, [key]: e.target.checked } }))
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     setFormError(null)
+
+    // Pflichtfeld-Check im Frontend (UX). Die Edge Function prüft dasselbe
+    // serverseitig autoritativ – das Frontend ist keine Vertrauensgrenze.
+    const missing = firstMissingRequired(personFields, form.custom_fields)
+    if (missing) {
+      setFormError(`Please fill in the required field: ${missing}`)
+      return
+    }
+
     setSaving(true)
     try {
       const result = editingId
@@ -158,6 +173,9 @@ export default function PortalPage() {
                   {personFields
                     .map((f) => {
                       const v = p.custom_fields?.[f.key]
+                      if (f.type === 'boolean') {
+                        return v === undefined || v === null ? '' : ` · ${f.label}: ${v ? 'Yes' : 'No'}`
+                      }
                       return v ? ` · ${f.label}: ${v}` : ''
                     })
                     .join('')}
@@ -201,28 +219,46 @@ export default function PortalPage() {
               </label>
             </div>
 
-            {personFields.map((f) => (
-              <label key={f.key}>
-                {f.label}{f.required ? ' *' : ''}
-                {Array.isArray(f.options) && f.options.length > 0 ? (
-                  <select
-                    value={customValue(f, form)}
-                    onChange={setCustom(f.key)}
-                    required={!!f.required}
-                  >
-                    <option value="">–</option>
-                    {f.options.map((o) => <option key={o} value={o}>{o}</option>)}
-                  </select>
-                ) : (
+            {personFields.map((f) => {
+              if (f.type === 'boolean') {
+                return (
+                  <label key={f.key} className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={!!form.custom_fields?.[f.key]}
+                      onChange={setCustomBool(f.key)}
+                    />
+                    {f.label}
+                  </label>
+                )
+              }
+              if (f.type === 'select') {
+                return (
+                  <label key={f.key}>
+                    {f.label}{f.required ? ' *' : ''}
+                    <select
+                      value={customValue(f, form)}
+                      onChange={setCustom(f.key)}
+                      required={!!f.required}
+                    >
+                      <option value="">–</option>
+                      {(f.options ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </label>
+                )
+              }
+              return (
+                <label key={f.key}>
+                  {f.label}{f.required ? ' *' : ''}
                   <input
-                    type={f.type === 'number' ? 'number' : 'text'}
+                    type={f.type === 'date' ? 'date' : 'text'}
                     value={customValue(f, form)}
                     onChange={setCustom(f.key)}
                     required={!!f.required}
                   />
-                )}
-              </label>
-            ))}
+                </label>
+              )
+            })}
 
             <label>
               Notes

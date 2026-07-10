@@ -198,7 +198,8 @@ a.item:hover {
   white-space: nowrap;
 }
 
-select {
+select,
+textarea {
   padding: 0.55rem 0.7rem;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -206,10 +207,87 @@ select {
   background: #fff;
 }
 
+textarea {
+  resize: vertical;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+.checkbox-label {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+}
+
+.checkbox-label input {
+  width: auto;
+}
+
+/* Feld-Editor: abgesetztes Formular innerhalb der Karte */
+.field-form {
+  border-top: 1px solid var(--border);
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
+.field-form h4 {
+  margin: 0;
+}
+
+/* Meldestand pro Delegation */
+.meld-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+.count {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.count-zero {
+  color: var(--error);
+}
+
+.person-panel {
+  border-top: 1px solid var(--border);
+  padding-top: 0.75rem;
+}
+
+.person-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.person-list > li {
+  font-size: 0.9rem;
+}
+
+.person-custom {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.2rem;
+}
+
+.chip {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+  font-size: 0.8rem;
 }
 
 /* Delegationszeile mit mehreren Blöcken untereinander */

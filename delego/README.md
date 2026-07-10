@@ -11,6 +11,22 @@ Hotelzuteilung). React + Vite + Supabase.
 - Organisation anlegen (Ersteller wird automatisch `admin`-Mitglied)
 - Turnier anlegen (Name, Zeitraum, Austragungsort, Meldeschluss, Status `draft`)
 
+**Meilenstein 3 – Personenfelder & Meldeübersicht**
+
+- Config-UI (Turnier-Ansicht): turnierspezifische Personenfelder verwalten
+  (`tournaments.settings.person_fields`) – Bezeichnung, Typ (`text` | `select` |
+  `date` | `boolean`), Optionen bei `select`, Pflicht-Flag, Reihenfolge.
+- Portal rendert alle vier Typen und blockt das Absenden, solange ein
+  Pflichtfeld leer ist (`boolean` ist von „Pflicht" ausgenommen – hat immer
+  einen Wert).
+- **Pflichtfeld-Validierung serverseitig** in `portal-persons` gespiegelt
+  (400 `required_field_missing`): das Frontend ist keine Vertrauensgrenze, der
+  Token-Inhaber kann die Function direkt aufrufen. Reihenfolge: Deadline (403)
+  vor Pflichtfeld (400) – die Deadline-Sperre bleibt unberührt.
+- Meldeübersicht: pro Delegation Anzahl gemeldeter Personen + Status; Personen
+  je Delegation ausklappbar (nur lesen, keine Bearbeitung durch den
+  Veranstalter).
+
 **Meilenstein 2 – Delegations-Verwaltung & Portal**
 
 - Veranstalter (in der Turnier-Ansicht): Delegationen anlegen/bearbeiten/löschen,
