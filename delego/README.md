@@ -12,9 +12,12 @@ Hotelzuteilung). React + Vite + Supabase.
   löschen bis zum Meldeschluss, danach schreibgeschützt.
 - Neue Edge Function `portal-travel` (analog zu `portal-persons`): gleiche
   Token-/Deadline-Logik (Deadline 403 vor allem anderen). Cross-Delegation-
-  Schutz: `delegation_id` serverseitig gesetzt, `person_ids` gegen die eigenen
-  Personen der Delegation geprüft (400 `person_not_in_delegation`), es gibt kein
-  DB-Constraint dafür – die Function ist der Durchsetzungspunkt.
+  Schutz: `delegation_id` serverseitig gesetzt, alle Mitglieder-IDs (Feld
+  `member_ids`, kanonisch wie in `portal-session`; `person_ids` als Alias
+  toleriert) gegen die eigenen Personen der Delegation geprüft – eine fremde ID
+  wird **hart abgelehnt** (400 `person_not_in_delegation`), nicht herausgefiltert.
+  Es gibt kein DB-Constraint dafür – die Function ist der Durchsetzungspunkt.
+  Eine Reisegruppe ohne gültige Mitglieder wird abgelehnt (400 `no_members`).
 - `portal-session` liefert zusätzlich die `travel_groups` (mit Mitglieder-IDs).
 - Disposition (`TravelDisposition`, Veranstalter): Ankunfts-/Abreiseübersicht
   nach `scheduled_at`, Mehrfachauswahl → Fahrt (`transfer`) erstellen; Fahrer,

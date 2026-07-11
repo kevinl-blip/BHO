@@ -85,13 +85,14 @@ Deno.serve(async (req) => {
         return json({ error: 'scheduled_at ist Pflicht (gültiger Zeitpunkt)' }, 400)
       }
 
-      // Kernschutz gegen Cross-Delegation: person_ids müssen zu DIESER
-      // Delegation gehören.
-      const check = await validateDelegationPersons(
-        admin,
-        ctx.delegationId,
-        (travel_group ?? {}).person_ids,
-      )
+      // Mitglieder aus member_ids lesen (kanonisch, so liefert portal-session
+      // sie auch). person_ids bleibt als Alias toleriert, damit ein
+      // Feldnamen-Mismatch nicht still Mitglieder verschluckt.
+      const rawMemberIds = (travel_group ?? {}).member_ids ?? (travel_group ?? {}).person_ids
+
+      // Kernschutz gegen Cross-Delegation: ALLE IDs müssen zu DIESER Delegation
+      // gehören. Eine fremde ID → harte Ablehnung, KEIN stilles Herausfiltern.
+      const check = await validateDelegationPersons(admin, ctx.delegationId, rawMemberIds)
       if ('error' in check) {
         return json(
           { error: check.error, message: 'Mindestens eine ausgewählte Person gehört nicht zu dieser Delegation.' },
@@ -99,6 +100,15 @@ Deno.serve(async (req) => {
         )
       }
       const personIds = check.ok
+
+      // Keine leere Reisegruppe: mindestens eine gültige Person dieser
+      // Delegation ist Pflicht (auch bei Update).
+      if (personIds.length === 0) {
+        return json(
+          { error: 'no_members', message: 'Eine Reisegruppe braucht mindestens eine Person dieser Delegation.' },
+          400,
+        )
+      }
 
       if (action === 'create') {
         const { data, error } = await admin

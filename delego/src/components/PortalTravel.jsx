@@ -83,13 +83,17 @@ export default function PortalTravel({ token, persons, travelGroups, readOnly, o
       setError('Please set date and time.')
       return
     }
+    if (form.person_ids.length === 0) {
+      setError('Please select at least one person for this travel group.')
+      return
+    }
     const payload = {
       direction: form.direction,
       scheduled_at: new Date(form.scheduledLocal).toISOString(),
       location: form.location,
       carrier_ref: form.carrier_ref,
       notes: form.notes,
-      person_ids: form.person_ids,
+      member_ids: form.person_ids,
     }
     setSaving(true)
     try {
