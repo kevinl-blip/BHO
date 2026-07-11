@@ -79,3 +79,54 @@ export async function listPersons(admin: SupabaseClient, delegationId: string) {
   if (error) throw error
   return data
 }
+
+// Liest die Reisegruppen genau einer Delegation, inklusive der zugeordneten
+// Personen-IDs (member_ids), damit das Portal die Auswahl vorbelegen kann.
+export async function listTravelGroups(admin: SupabaseClient, delegationId: string) {
+  const { data, error } = await admin
+    .from('travel_groups')
+    .select(
+      'id, direction, scheduled_at, carrier_ref, location, status, notes, travel_group_members ( person_id )',
+    )
+    .eq('delegation_id', delegationId)
+    .order('scheduled_at', { ascending: true })
+  if (error) throw error
+  return (data ?? []).map((g) => {
+    const members = Array.isArray(g.travel_group_members) ? g.travel_group_members : []
+    return {
+      id: g.id,
+      direction: g.direction,
+      scheduled_at: g.scheduled_at,
+      carrier_ref: g.carrier_ref,
+      location: g.location,
+      status: g.status,
+      notes: g.notes,
+      member_ids: members.map((m: { person_id: string }) => m.person_id),
+    }
+  })
+}
+
+// Prüft, dass alle person_ids zu genau dieser Delegation gehören.
+// Kernschutz gegen Cross-Delegation: es gibt KEIN DB-Constraint dafür, die
+// Prüfung passiert ausschließlich hier. Rückgabe: geprüfte Liste oder Fehler.
+export async function validateDelegationPersons(
+  admin: SupabaseClient,
+  delegationId: string,
+  ids: unknown,
+): Promise<{ ok: string[] } | { error: string }> {
+  if (!Array.isArray(ids)) return { ok: [] }
+  const wanted = [...new Set(ids.filter((x): x is string => typeof x === 'string'))]
+  if (wanted.length === 0) return { ok: [] }
+
+  const { data, error } = await admin
+    .from('persons')
+    .select('id')
+    .eq('delegation_id', delegationId)
+    .in('id', wanted)
+  if (error) throw error
+
+  const valid = new Set((data ?? []).map((r) => r.id))
+  const foreign = wanted.filter((id) => !valid.has(id))
+  if (foreign.length > 0) return { error: 'person_not_in_delegation' }
+  return { ok: wanted }
+}

@@ -5,6 +5,24 @@ Hotelzuteilung). React + Vite + Supabase.
 
 ## Stand
 
+**Meilenstein 4a – Reisen: Erfassung & einfache Disposition**
+
+- Portal (`PortalTravel`): Delegation trägt Reisegruppen ein (Ankunft/Abreise,
+  Zeitpunkt, Ort, Flug-/Zugnummer, mitreisende Personen). Anlegen/bearbeiten/
+  löschen bis zum Meldeschluss, danach schreibgeschützt.
+- Neue Edge Function `portal-travel` (analog zu `portal-persons`): gleiche
+  Token-/Deadline-Logik (Deadline 403 vor allem anderen). Cross-Delegation-
+  Schutz: `delegation_id` serverseitig gesetzt, `person_ids` gegen die eigenen
+  Personen der Delegation geprüft (400 `person_not_in_delegation`), es gibt kein
+  DB-Constraint dafür – die Function ist der Durchsetzungspunkt.
+- `portal-session` liefert zusätzlich die `travel_groups` (mit Mitglieder-IDs).
+- Disposition (`TravelDisposition`, Veranstalter): Ankunfts-/Abreiseübersicht
+  nach `scheduled_at`, Mehrfachauswahl → Fahrt (`transfer`) erstellen; Fahrer,
+  Fahrzeug, Abholzeit, Ziel, Status manuell setzen; Reisegruppen herauslösen;
+  Fahrt löschen. Fahrzeugverwaltung (`VehiclesManager`). Passagier-/Kapazitäts-
+  Anzeige mit Warnhinweis (kein Auto-Bündeln – das ist 4b).
+- Fahrer werden per user_id-Kürzel angezeigt (kein Profil-Schema in V1).
+
 **Meilenstein 1**
 
 - Login / Registrierung (Supabase Auth, E-Mail + Passwort)
@@ -119,6 +137,7 @@ musst nichts zusätzlich konfigurieren.
    ```sh
    supabase functions deploy portal-session --no-verify-jwt
    supabase functions deploy portal-persons --no-verify-jwt
+   supabase functions deploy portal-travel  --no-verify-jwt
    ```
 
 5. Kurz prüfen (ungültiger Token muss `404 {"error":"invalid token"}` liefern;

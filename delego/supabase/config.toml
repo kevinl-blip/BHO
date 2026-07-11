@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.portal-persons]
 verify_jwt = false
+
+[functions.portal-travel]
+verify_jwt = false
