@@ -6,6 +6,7 @@ import DelegationPersons from '../components/DelegationPersons'
 import VehiclesManager from '../components/VehiclesManager'
 import TravelDisposition from '../components/TravelDisposition'
 import TokenStaffManager from '../components/TokenStaffManager'
+import ArrivalBoard from '../components/ArrivalBoard'
 
 const emptyForm = {
   name: '',
@@ -288,6 +289,8 @@ export default function TournamentPage() {
           )
         })}
       </ul>
+
+      {tournament && <ArrivalBoard tournamentId={tournamentId} />}
 
       {tournament && (
         <TravelDisposition

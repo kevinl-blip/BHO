@@ -25,6 +25,10 @@ Hotelzuteilung). React + Vite + Supabase.
   jede `person_id` wird über `persons→delegations` gegen dieses Turnier geprüft
   (400 `person_not_in_tournament`, harte Ablehnung), Walk-ins werden mit dem
   server-abgeleiteten `tournament_id` geschrieben.
+- Veranstalter-Livesicht (`ArrivalBoard` in der Turnier-Ansicht): Anwesenheits-
+  stand pro Delegation (present/expected/missing, pro Person aufklappbar) und
+  Walk-in-Liste, per Polling ~5 s aktualisiert. Nur Lesen über RLS
+  (`chk_select` / `wlk_select`).
 
 **Meilenstein 4a – Reisen: Erfassung & einfache Disposition**
 
