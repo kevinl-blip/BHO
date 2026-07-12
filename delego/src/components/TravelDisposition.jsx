@@ -23,12 +23,8 @@ function fmt(iso) {
   return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString('de-DE')
 }
 
-function driverLabel(userId) {
-  return userId ? `Fahrer …${userId.slice(-6)}` : 'kein Fahrer'
-}
-
 const emptyEdit = {
-  driver_user_id: '',
+  driver_id: '',
   vehicle_id: '',
   pickupLocal: '',
   from_location: '',
@@ -59,7 +55,7 @@ export default function TravelDisposition({ tournamentId, vehicles, drivers, ven
         .order('scheduled_at', { ascending: true }),
       supabase
         .from('transfers')
-        .select('id, travel_group_ids, driver_user_id, vehicle_id, pickup_at, from_location, to_location, status, notes')
+        .select('id, travel_group_ids, driver_id, vehicle_id, pickup_at, from_location, to_location, status, notes')
         .eq('tournament_id', tournamentId)
         .order('pickup_at', { ascending: true, nullsFirst: true }),
     ])
@@ -90,7 +86,13 @@ export default function TravelDisposition({ tournamentId, vehicles, drivers, ven
   const groupById = new Map((groups ?? []).map((g) => [g.id, g]))
   const assignedIds = new Set((transfers ?? []).flatMap((t) => t.travel_group_ids ?? []))
   const vehicleById = new Map(vehicles.map((v) => [v.id, v]))
+  const driverById = new Map(drivers.map((d) => [d.id, d]))
+  const activeDrivers = drivers.filter((d) => d.active)
   const shownGroups = (groups ?? []).filter((g) => g.direction === directionFilter)
+
+  function driverName(id) {
+    return id ? (driverById.get(id)?.name ?? 'Fahrer entfernt') : 'kein Fahrer'
+  }
 
   function toggleSelect(id) {
     setSelected((prev) => {
@@ -125,7 +127,7 @@ export default function TravelDisposition({ tournamentId, vehicles, drivers, ven
   function startEdit(t) {
     setEditingId(t.id)
     setEditForm({
-      driver_user_id: t.driver_user_id ?? '',
+      driver_id: t.driver_id ?? '',
       vehicle_id: t.vehicle_id ?? '',
       pickupLocal: isoToLocalInput(t.pickup_at),
       from_location: t.from_location ?? '',
@@ -139,7 +141,7 @@ export default function TravelDisposition({ tournamentId, vehicles, drivers, ven
   async function saveTransfer() {
     setError(null)
     const payload = {
-      driver_user_id: editForm.driver_user_id || null,
+      driver_id: editForm.driver_id || null,
       vehicle_id: editForm.vehicle_id || null,
       pickup_at: localToIso(editForm.pickupLocal),
       from_location: editForm.from_location || null,
@@ -243,7 +245,7 @@ export default function TravelDisposition({ tournamentId, vehicles, drivers, ven
                     {(t.from_location || '—')} → {(t.to_location || '—')}
                   </div>
                   <div className="muted">
-                    {driverLabel(t.driver_user_id)}
+                    {driverName(t.driver_id)}
                     {' · '}
                     {t.vehicle_id ? (vehicleById.get(t.vehicle_id)?.label ?? 'Fahrzeug') : 'kein Fahrzeug'}
                     {' · '}
@@ -275,13 +277,17 @@ export default function TravelDisposition({ tournamentId, vehicles, drivers, ven
                     <label>
                       Fahrer
                       <select
-                        value={editForm.driver_user_id}
-                        onChange={(e) => setEditForm((f) => ({ ...f, driver_user_id: e.target.value }))}
+                        value={editForm.driver_id}
+                        onChange={(e) => setEditForm((f) => ({ ...f, driver_id: e.target.value }))}
                       >
                         <option value="">— kein Fahrer —</option>
-                        {drivers.map((d) => (
-                          <option key={d.user_id} value={d.user_id}>{driverLabel(d.user_id)}</option>
+                        {activeDrivers.map((d) => (
+                          <option key={d.id} value={d.id}>{d.name}</option>
                         ))}
+                        {/* Bereits zugewiesener, inzwischen inaktiver Fahrer bleibt wählbar sichtbar */}
+                        {editForm.driver_id && !driverById.get(editForm.driver_id)?.active && driverById.get(editForm.driver_id) && (
+                          <option value={editForm.driver_id}>{driverById.get(editForm.driver_id).name} (inaktiv)</option>
+                        )}
                       </select>
                     </label>
                     <label>

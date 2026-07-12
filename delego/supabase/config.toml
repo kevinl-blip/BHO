@@ -14,3 +14,12 @@ verify_jwt = false
 
 [functions.portal-travel]
 verify_jwt = false
+
+[functions.driver-session]
+verify_jwt = false
+
+[functions.coordinator-session]
+verify_jwt = false
+
+[functions.coordinator-checkin]
+verify_jwt = false

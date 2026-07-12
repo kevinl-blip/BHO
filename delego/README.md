@@ -5,6 +5,27 @@ Hotelzuteilung). React + Vite + Supabase.
 
 ## Stand
 
+**Meilenstein 4b Teil 1 – Einsatztag-Sichten (Fahrer & Koordinatoren)**
+
+- Schema V2 (`docs/delego_schema_v2_einsatztag.sql`): `drivers`, `coordinators`,
+  `arrival_checkins`, `walkins`, Spalte `transfers.driver_id`.
+- Veranstalter (Turnier-Ansicht): Fahrer und Koordinatoren anlegen/bearbeiten/
+  löschen (Name, Telefon, aktiv), je mit Token-Link zum Kopieren, „Link neu
+  erzeugen" und Deaktivieren. Disposition weist Fahrer jetzt über `driver_id`
+  (echter Name) statt über `driver_user_id` zu.
+- Fahrer-Ansicht (`/driver/<token>`, ohne Login, mobil): eigene Fahrten
+  chronologisch mit Zeit, Ort, Personen (Namen), Zielhotel-Feld (vorerst „not
+  assigned yet"). Edge Function `driver-session` (nur Lesen).
+- Koordinator-Ansicht (`/coordinator/<token>`, ohne Login, mobil, live per
+  Polling ~5 s): gesamte Ankunftsübersicht des Turniers mit Personen, Fahrer,
+  Ort, Zeit; Abhaken pro Person (`expected/present/missing` → `arrival_checkins`)
+  und Walk-ins erfassen. Edge Functions `coordinator-session` (Lesen) und
+  `coordinator-checkin` (Schreiben).
+- Cross-Tournament-Schutz: Koordinator-Token → `tournament_id` serverseitig;
+  jede `person_id` wird über `persons→delegations` gegen dieses Turnier geprüft
+  (400 `person_not_in_tournament`, harte Ablehnung), Walk-ins werden mit dem
+  server-abgeleiteten `tournament_id` geschrieben.
+
 **Meilenstein 4a – Reisen: Erfassung & einfache Disposition**
 
 - Portal (`PortalTravel`): Delegation trägt Reisegruppen ein (Ankunft/Abreise,
@@ -100,8 +121,20 @@ Hotelzuteilung). React + Vite + Supabase.
   `permission denied for table memberships`. Die GRANTs sind sicher, weil RLS
   auf allen Tabellen aktiv bleibt und die eigentliche Zeilen-Sperre ist
   (Details oben in der Datei).
+- **Für die Einsatztag-Sichten (Meilenstein 4b): `docs/delego_schema_v2_einsatztag.sql`
+  einspielen** (SQL Editor → Run), **als 4. Schritt nach Schema → RPC → Grants**.
+  Legt die Tabellen `drivers`, `coordinators`, `arrival_checkins`, `walkins` an,
+  ergänzt `transfers.driver_id` und bringt RLS-Policies + GRANTs für die vier
+  neuen Tabellen gleich mit.
 - E-Mail-Auth ist aktiviert. Ist „Confirm email" eingeschaltet, müssen sich
   neue Nutzer erst per Bestätigungslink verifizieren.
+
+**Reihenfolge der SQL-Dateien (im SQL Editor, in dieser Reihenfolge):**
+
+1. `docs/delego_schema_v1.sql` – Basisschema + RLS
+2. `docs/rpc_create_organization.sql` – Onboarding-RPC
+3. `docs/grants_v1.sql` – Tabellen-GRANTs
+4. `docs/delego_schema_v2_einsatztag.sql` – Einsatztag-Tabellen (Fahrer, Koordinatoren, Check-ins, Walk-ins)
 
 ## Edge Functions deployen (für Meilenstein 2 / das Portal)
 
@@ -138,9 +171,12 @@ musst nichts zusätzlich konfigurieren.
    im Function-Code, nicht Supabase-Auth:
 
    ```sh
-   supabase functions deploy portal-session --no-verify-jwt
-   supabase functions deploy portal-persons --no-verify-jwt
-   supabase functions deploy portal-travel  --no-verify-jwt
+   supabase functions deploy portal-session      --no-verify-jwt
+   supabase functions deploy portal-persons      --no-verify-jwt
+   supabase functions deploy portal-travel       --no-verify-jwt
+   supabase functions deploy driver-session      --no-verify-jwt
+   supabase functions deploy coordinator-session --no-verify-jwt
+   supabase functions deploy coordinator-checkin --no-verify-jwt
    ```
 
 5. Kurz prüfen (ungültiger Token muss `404 {"error":"invalid token"}` liefern;
