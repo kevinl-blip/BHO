@@ -3,6 +3,8 @@ import { Link, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import PersonFieldsEditor from '../components/PersonFieldsEditor'
 import DelegationPersons from '../components/DelegationPersons'
+import VehiclesManager from '../components/VehiclesManager'
+import TravelDisposition from '../components/TravelDisposition'
 
 const emptyForm = {
   name: '',
@@ -31,10 +33,36 @@ export default function TournamentPage() {
   const [copiedId, setCopiedId] = useState(null)
   const [counts, setCounts] = useState({})
   const [expandedId, setExpandedId] = useState(null)
+  const [vehicles, setVehicles] = useState([])
+  const [drivers, setDrivers] = useState([])
 
   const personFields = Array.isArray(tournament?.settings?.person_fields)
     ? tournament.settings.person_fields
     : []
+
+  const loadVehicles = useCallback(async () => {
+    const { data } = await supabase
+      .from('vehicles')
+      .select('id, label, capacity')
+      .eq('tournament_id', tournamentId)
+      .order('label', { ascending: true })
+    setVehicles(data ?? [])
+  }, [tournamentId])
+
+  useEffect(() => { loadVehicles() }, [loadVehicles])
+
+  // Fahrer = Mitglieder der Organisation mit Rolle 'driver'. Nur user_id
+  // verfügbar (kein Profil-Schema in V1) – Anzeige daher per ID-Kürzel.
+  useEffect(() => {
+    const orgId = tournament?.organization_id
+    if (!orgId) return
+    supabase
+      .from('memberships')
+      .select('user_id')
+      .eq('organization_id', orgId)
+      .eq('role', 'driver')
+      .then(({ data }) => setDrivers(data ?? []))
+  }, [tournament?.organization_id])
 
   const load = useCallback(async () => {
     const [tRes, dRes] = await Promise.all([
@@ -250,6 +278,17 @@ export default function TournamentPage() {
           )
         })}
       </ul>
+
+      {tournament && (
+        <TravelDisposition
+          tournamentId={tournamentId}
+          vehicles={vehicles}
+          drivers={drivers}
+          venue={tournament.venue}
+        />
+      )}
+
+      {tournament && <VehiclesManager tournamentId={tournamentId} vehicles={vehicles} onChanged={loadVehicles} />}
 
       {tournament && <PersonFieldsEditor fields={personFields} onChange={saveFields} />}
 

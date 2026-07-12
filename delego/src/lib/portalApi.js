@@ -46,3 +46,15 @@ export function portalUpdatePerson(token, person) {
 export function portalDeletePerson(token, id) {
   return call('portal-persons', { token, action: 'delete', person: { id } })
 }
+
+export function portalCreateTravelGroup(token, travel_group) {
+  return call('portal-travel', { token, action: 'create', travel_group })
+}
+
+export function portalUpdateTravelGroup(token, travel_group) {
+  return call('portal-travel', { token, action: 'update', travel_group })
+}
+
+export function portalDeleteTravelGroup(token, id) {
+  return call('portal-travel', { token, action: 'delete', travel_group: { id } })
+}

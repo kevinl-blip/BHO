@@ -290,6 +290,74 @@ textarea {
   font-size: 0.8rem;
 }
 
+.field-legend {
+  font-size: 0.9rem;
+  font-weight: 500;
+  display: block;
+  margin-bottom: 0.4rem;
+}
+
+.check-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.35rem;
+}
+
+/* Disposition */
+.dir-filter {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+}
+
+.badge-free {
+  background: #eef7ee;
+  border-color: #c9e6c9;
+  color: var(--info);
+}
+
+.travel-row .checkbox-label {
+  align-items: flex-start;
+  flex: 1;
+}
+
+.section-gap {
+  margin-top: 1.5rem;
+}
+
+.transfer-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.transfer-groups .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.chip-x {
+  border: none;
+  background: transparent;
+  padding: 0 0.1rem;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--muted);
+}
+
+.chip-x:hover {
+  color: var(--error);
+}
+
+.transfer-edit {
+  border-top: 1px solid var(--border);
+  padding-top: 0.75rem;
+}
+
 /* Delegationszeile mit mehreren Blöcken untereinander */
 .item-col {
   flex-direction: column;

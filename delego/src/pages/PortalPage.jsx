@@ -7,6 +7,7 @@ import {
   portalUpdatePerson,
 } from '../lib/portalApi'
 import { firstMissingRequired } from '../lib/personFields'
+import PortalTravel from '../components/PortalTravel'
 
 const ROLES = ['athlete', 'coach', 'official']
 
@@ -56,10 +57,22 @@ export default function PortalPage() {
   }
 
   const { tournament, persons, read_only: readOnly } = state.data
+  const travelGroups = Array.isArray(state.data.travel_groups) ? state.data.travel_groups : []
   const personFields = Array.isArray(tournament.person_fields) ? tournament.person_fields : []
   const deadlineText = tournament.submission_deadline
     ? new Date(tournament.submission_deadline).toLocaleString('en-GB')
     : null
+
+  function handleTravelChange(nextGroups, deadlinePassed) {
+    setState((s) => ({
+      ...s,
+      data: {
+        ...s.data,
+        ...(nextGroups ? { travel_groups: nextGroups } : {}),
+        ...(deadlinePassed ? { read_only: true } : {}),
+      },
+    }))
+  }
 
   function resetForm() {
     setForm(emptyPerson)
@@ -277,6 +290,14 @@ export default function PortalPage() {
           </form>
         </div>
       )}
+
+      <PortalTravel
+        token={token}
+        persons={persons}
+        travelGroups={travelGroups}
+        readOnly={readOnly}
+        onChange={handleTravelChange}
+      />
     </div>
   )
 }
