@@ -13,9 +13,13 @@ Hotelzuteilung). React + Vite + Supabase.
   löschen (Name, Telefon, aktiv), je mit Token-Link zum Kopieren, „Link neu
   erzeugen" und Deaktivieren. Disposition weist Fahrer jetzt über `driver_id`
   (echter Name) statt über `driver_user_id` zu.
-- Fahrer-Ansicht (`/driver/<token>`, ohne Login, mobil): eigene Fahrten
-  chronologisch mit Zeit, Ort, Personen (Namen), Zielhotel-Feld (vorerst „not
-  assigned yet"). Edge Function `driver-session` (nur Lesen).
+- Fahrer-Ansicht (`/driver/<token>`, ohne Login, mobil, live per Polling ~5 s):
+  eigene Fahrten chronologisch mit Zeit, Ort, Personen inkl. Check-in-Status
+  (present grün / missing rot / expected), pro Fahrt eine Zusammenfassung
+  („All passengers here" bzw. „N missing — check with coordinator") und Kontakte
+  der aktiven Koordinatoren als `tel:`-Links. Zielhotel-Feld (vorerst „not
+  assigned yet"). Edge Function `driver-session` (nur Lesen) liefert Status und
+  Kontakte mit – strikt auf die Fahrten des Tokens gescopet.
 - Koordinator-Ansicht (`/coordinator/<token>`, ohne Login, mobil, live per
   Polling ~5 s): gesamte Ankunftsübersicht des Turniers mit Personen, Fahrer,
   Ort, Zeit; Abhaken pro Person (`expected/present/missing` → `arrival_checkins`)

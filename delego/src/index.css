@@ -519,6 +519,70 @@ textarea {
 .status-missing-text { color: var(--error); font-weight: 600; }
 .small { font-size: 0.8rem; }
 
+/* Fahrt-Zusammenfassung (Fahrer-Ansicht) */
+.ride-summary {
+  margin: 0.5rem 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.summary-present {
+  background: #eef7ee;
+  border: 1px solid #c9e6c9;
+  color: var(--info);
+}
+
+.summary-missing {
+  background: #fdeceb;
+  border: 1px solid #f6c9c6;
+  color: var(--error);
+}
+
+.summary-neutral {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+/* Kontaktliste (Koordinatoren) */
+.contact-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.contact-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.contact-row:last-child {
+  border-bottom: none;
+}
+
+.tel {
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--primary);
+  border-radius: 6px;
+}
+
+.tel:hover {
+  text-decoration: none;
+  background: var(--primary);
+  color: #fff;
+}
+
 /* Delegationszeile mit mehreren Blöcken untereinander */
 .item-col {
   flex-direction: column;

@@ -1,5 +1,9 @@
-// POST { token } → Fahrer-Kontext + dessen eigene Fahrten (chronologisch).
+// POST { token } → Fahrer-Kontext + dessen eigene Fahrten (chronologisch),
+// inkl. Check-in-Status der Passagiere und Kontakte der aktiven Koordinatoren.
 // Nur Lesen. Öffentlich erreichbar (Deploy mit --no-verify-jwt); Auth = Token.
+//
+// Scope: Passagiere und Check-in-Status stammen ausschließlich aus den
+// Reisegruppen der Fahrten DIESES Fahrers; Koordinatoren aus DESSEN Turnier.
 import { corsHeaders, json } from '../_shared/cors.ts'
 import { adminClient, resolveDriverToken } from '../_shared/portal.ts'
 
@@ -21,28 +25,45 @@ Deno.serve(async (req) => {
       .order('pickup_at', { ascending: true, nullsFirst: true })
     if (tErr) throw tErr
 
-    // Personen aller referenzierten Reisegruppen in einem Rutsch laden.
+    // Personen (inkl. id) aller referenzierten Reisegruppen laden.
     const groupIds = [...new Set((transfers ?? []).flatMap((t) => t.travel_group_ids ?? []))]
-    const groupPeople = new Map<string, { last_name: string; first_name: string }[]>()
+    const groupPeople = new Map<string, { id: string; last_name: string; first_name: string }[]>()
+    const allPersonIds = new Set<string>()
     if (groupIds.length > 0) {
       const { data: groups, error: gErr } = await admin
         .from('travel_groups')
-        .select('id, travel_group_members ( persons ( last_name, first_name ) )')
+        .select('id, travel_group_members ( persons ( id, last_name, first_name ) )')
         .in('id', groupIds)
       if (gErr) throw gErr
       for (const g of groups ?? []) {
         const members = Array.isArray(g.travel_group_members) ? g.travel_group_members : []
-        groupPeople.set(
-          g.id,
-          members
-            .map((m: { persons: unknown }) => (Array.isArray(m.persons) ? m.persons[0] : m.persons))
-            .filter(Boolean),
-        )
+        const people = members
+          .map((m: { persons: unknown }) => (Array.isArray(m.persons) ? m.persons[0] : m.persons))
+          .filter(Boolean) as { id: string; last_name: string; first_name: string }[]
+        for (const p of people) allPersonIds.add(p.id)
+        groupPeople.set(g.id, people)
       }
     }
 
+    // Check-in-Status genau dieser Passagiere.
+    const statusByPerson = new Map<string, string>()
+    if (allPersonIds.size > 0) {
+      const { data: checkins, error: cErr } = await admin
+        .from('arrival_checkins')
+        .select('person_id, status')
+        .in('person_id', [...allPersonIds])
+      if (cErr) throw cErr
+      for (const c of checkins ?? []) statusByPerson.set(c.person_id, c.status)
+    }
+
     const rides = (transfers ?? []).map((t) => {
-      const people = (t.travel_group_ids ?? []).flatMap((gid: string) => groupPeople.get(gid) ?? [])
+      const people = (t.travel_group_ids ?? []).flatMap((gid: string) =>
+        (groupPeople.get(gid) ?? []).map((p) => ({
+          last_name: p.last_name,
+          first_name: p.first_name,
+          status: statusByPerson.get(p.id) ?? 'expected',
+        })),
+      )
       return {
         id: t.id,
         pickup_at: t.pickup_at,
@@ -55,7 +76,16 @@ Deno.serve(async (req) => {
       }
     })
 
-    return json({ driver: { name: ctx.name }, rides })
+    // Aktive Koordinatoren des Turniers als Kontakt.
+    const { data: coordinators, error: coErr } = await admin
+      .from('coordinators')
+      .select('name, phone')
+      .eq('tournament_id', ctx.tournamentId)
+      .eq('active', true)
+      .order('name', { ascending: true })
+    if (coErr) throw coErr
+
+    return json({ driver: { name: ctx.name }, rides, coordinators: coordinators ?? [] })
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500)
   }
