@@ -106,6 +106,82 @@ export async function listTravelGroups(admin: SupabaseClient, delegationId: stri
   })
 }
 
+// ------------------------------------------------------------
+// Einsatztag-Sichten (V2): Fahrer- und Koordinator-Token.
+// Gleiches Muster wie resolveToken: access_token → genau eine Ressource,
+// zusätzlich active = true (deaktivierte Tokens gelten als ungültig).
+// ------------------------------------------------------------
+
+export type DriverContext = { driverId: string; tournamentId: string; name: string }
+
+export async function resolveDriverToken(
+  admin: SupabaseClient,
+  token: unknown,
+): Promise<DriverContext | null> {
+  if (typeof token !== 'string' || token.length < 20) return null
+  const { data, error } = await admin
+    .from('drivers')
+    .select('id, name, tournament_id, active')
+    .eq('access_token', token)
+    .maybeSingle()
+  if (error) throw error
+  if (!data || data.active !== true) return null
+  return { driverId: data.id, tournamentId: data.tournament_id, name: data.name }
+}
+
+export type CoordinatorContext = { coordinatorId: string; tournamentId: string; name: string }
+
+export async function resolveCoordinatorToken(
+  admin: SupabaseClient,
+  token: unknown,
+): Promise<CoordinatorContext | null> {
+  if (typeof token !== 'string' || token.length < 20) return null
+  const { data, error } = await admin
+    .from('coordinators')
+    .select('id, name, tournament_id, active')
+    .eq('access_token', token)
+    .maybeSingle()
+  if (error) throw error
+  if (!data || data.active !== true) return null
+  return { coordinatorId: data.id, tournamentId: data.tournament_id, name: data.name }
+}
+
+// Cross-Tournament-Schutz: arrival_checkins hat KEINE eigene tournament_id –
+// die Zugehörigkeit läuft über person_id → persons → delegations.tournament_id.
+// Gibt true zurück, wenn die Person zu genau diesem Turnier gehört.
+export async function personInTournament(
+  admin: SupabaseClient,
+  tournamentId: string,
+  personId: unknown,
+): Promise<boolean> {
+  if (typeof personId !== 'string') return false
+  const { data, error } = await admin
+    .from('persons')
+    .select('id, delegations!inner ( tournament_id )')
+    .eq('id', personId)
+    .eq('delegations.tournament_id', tournamentId)
+    .maybeSingle()
+  if (error) throw error
+  return !!data
+}
+
+// Prüft, dass eine Delegation zu diesem Turnier gehört (für walkins.delegation_id).
+export async function delegationInTournament(
+  admin: SupabaseClient,
+  tournamentId: string,
+  delegationId: unknown,
+): Promise<boolean> {
+  if (typeof delegationId !== 'string') return false
+  const { data, error } = await admin
+    .from('delegations')
+    .select('id')
+    .eq('id', delegationId)
+    .eq('tournament_id', tournamentId)
+    .maybeSingle()
+  if (error) throw error
+  return !!data
+}
+
 // Prüft, dass alle person_ids zu genau dieser Delegation gehören.
 // Kernschutz gegen Cross-Delegation: es gibt KEIN DB-Constraint dafür, die
 // Prüfung passiert ausschließlich hier. Rückgabe: geprüfte Liste oder Fehler.

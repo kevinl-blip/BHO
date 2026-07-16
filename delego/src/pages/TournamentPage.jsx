@@ -5,6 +5,8 @@ import PersonFieldsEditor from '../components/PersonFieldsEditor'
 import DelegationPersons from '../components/DelegationPersons'
 import VehiclesManager from '../components/VehiclesManager'
 import TravelDisposition from '../components/TravelDisposition'
+import TokenStaffManager from '../components/TokenStaffManager'
+import ArrivalBoard from '../components/ArrivalBoard'
 
 const emptyForm = {
   name: '',
@@ -35,6 +37,7 @@ export default function TournamentPage() {
   const [expandedId, setExpandedId] = useState(null)
   const [vehicles, setVehicles] = useState([])
   const [drivers, setDrivers] = useState([])
+  const [coordinators, setCoordinators] = useState([])
 
   const personFields = Array.isArray(tournament?.settings?.person_fields)
     ? tournament.settings.person_fields
@@ -49,20 +52,28 @@ export default function TournamentPage() {
     setVehicles(data ?? [])
   }, [tournamentId])
 
-  useEffect(() => { loadVehicles() }, [loadVehicles])
+  // Fahrer (V2): eigene Ressource mit Token-Zugang statt auth.users.
+  const loadDrivers = useCallback(async () => {
+    const { data } = await supabase
+      .from('drivers')
+      .select('id, name, phone, access_token, active, notes')
+      .eq('tournament_id', tournamentId)
+      .order('name', { ascending: true })
+    setDrivers(data ?? [])
+  }, [tournamentId])
 
-  // Fahrer = Mitglieder der Organisation mit Rolle 'driver'. Nur user_id
-  // verfügbar (kein Profil-Schema in V1) – Anzeige daher per ID-Kürzel.
-  useEffect(() => {
-    const orgId = tournament?.organization_id
-    if (!orgId) return
-    supabase
-      .from('memberships')
-      .select('user_id')
-      .eq('organization_id', orgId)
-      .eq('role', 'driver')
-      .then(({ data }) => setDrivers(data ?? []))
-  }, [tournament?.organization_id])
+  const loadCoordinators = useCallback(async () => {
+    const { data } = await supabase
+      .from('coordinators')
+      .select('id, name, phone, access_token, active, notes')
+      .eq('tournament_id', tournamentId)
+      .order('name', { ascending: true })
+    setCoordinators(data ?? [])
+  }, [tournamentId])
+
+  useEffect(() => { loadVehicles() }, [loadVehicles])
+  useEffect(() => { loadDrivers() }, [loadDrivers])
+  useEffect(() => { loadCoordinators() }, [loadCoordinators])
 
   const load = useCallback(async () => {
     const [tRes, dRes] = await Promise.all([
@@ -279,6 +290,8 @@ export default function TournamentPage() {
         })}
       </ul>
 
+      {tournament && <ArrivalBoard tournamentId={tournamentId} />}
+
       {tournament && (
         <TravelDisposition
           tournamentId={tournamentId}
@@ -289,6 +302,28 @@ export default function TournamentPage() {
       )}
 
       {tournament && <VehiclesManager tournamentId={tournamentId} vehicles={vehicles} onChanged={loadVehicles} />}
+
+      {tournament && (
+        <TokenStaffManager
+          table="drivers"
+          title="Fahrer"
+          linkPath="driver"
+          tournamentId={tournamentId}
+          items={drivers}
+          onChanged={loadDrivers}
+        />
+      )}
+
+      {tournament && (
+        <TokenStaffManager
+          table="coordinators"
+          title="Koordinatoren"
+          linkPath="coordinator"
+          tournamentId={tournamentId}
+          items={coordinators}
+          onChanged={loadCoordinators}
+        />
+      )}
 
       {tournament && <PersonFieldsEditor fields={personFields} onChange={saveFields} />}
 

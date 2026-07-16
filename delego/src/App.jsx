@@ -5,6 +5,8 @@ import DashboardPage from './pages/DashboardPage'
 import OrganizationPage from './pages/OrganizationPage'
 import TournamentPage from './pages/TournamentPage'
 import PortalPage from './pages/PortalPage'
+import DriverView from './pages/DriverView'
+import CoordinatorView from './pages/CoordinatorView'
 
 function ProtectedLayout() {
   const { session, user, loading, signOut } = useAuth()
@@ -34,8 +36,10 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          {/* Öffentliches Delegationsportal – ohne Login, Auth über Token */}
+          {/* Öffentliche Token-Sichten – ohne Login, Auth über Token */}
           <Route path="/portal/:token" element={<PortalPage />} />
+          <Route path="/driver/:token" element={<DriverView />} />
+          <Route path="/coordinator/:token" element={<CoordinatorView />} />
           <Route element={<ProtectedLayout />}>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/org/:orgId" element={<OrganizationPage />} />
