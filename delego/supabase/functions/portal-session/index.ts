@@ -1,7 +1,14 @@
 // POST { token } → Kontext + Personenliste der zugehörigen Delegation.
 // Öffentlich erreichbar (Deploy mit --no-verify-jwt); die Auth ist der Token.
 import { corsHeaders, json } from '../_shared/cors.ts'
-import { adminClient, listPersons, listTravelGroups, resolveToken } from '../_shared/portal.ts'
+import {
+  adminClient,
+  listAccommodationRequests,
+  listHotelsWithCategories,
+  listPersons,
+  listTravelGroups,
+  resolveToken,
+} from '../_shared/portal.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -14,10 +21,15 @@ Deno.serve(async (req) => {
     const ctx = await resolveToken(admin, token)
     if (!ctx) return json({ error: 'invalid token' }, 404)
 
-    const [persons, travel_groups] = await Promise.all([
+    const [persons, travel_groups, hotels] = await Promise.all([
       listPersons(admin, ctx.delegationId),
       listTravelGroups(admin, ctx.delegationId),
+      listHotelsWithCategories(admin, ctx.tournamentId),
     ])
+    const accommodation_requests = await listAccommodationRequests(
+      admin,
+      (persons ?? []).map((p) => p.id),
+    )
 
     return json({
       tournament: {
@@ -33,6 +45,8 @@ Deno.serve(async (req) => {
       read_only: ctx.readOnly,
       persons,
       travel_groups,
+      hotels,
+      accommodation_requests,
     })
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500)

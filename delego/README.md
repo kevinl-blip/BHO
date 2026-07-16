@@ -5,6 +5,24 @@ Hotelzuteilung). React + Vite + Supabase.
 
 ## Stand
 
+**Meilenstein 5a – Hotels, Kontingente & Unterkunftswünsche**
+
+- Schema V3 (`docs/delego_schema_v3_hotelkontingente.sql`): `room_inventory`
+  (tagesgenaue Zimmerkontingente), `rooms`-Spalten `check_in`/`check_out`/`is_upgrade`.
+- Veranstalter (Turnier-Ansicht): Hotels anlegen/bearbeiten/löschen (Name,
+  Adresse, `is_official`; `is_official=false` = Selbstbucher-Hotel), pro Hotel
+  Zimmerkategorien (Label, Bettenzahl, Preis p. P./Nacht). Kontingent-Raster pro
+  Hotel: Zeilen = Nächte (Turnierzeitraum ± 1 Puffertag), Spalten = Kategorien,
+  Zellen = verfügbare **Zimmer** → `room_inventory` (Batch-Upsert).
+- Portal (Delegation): Unterkunftswünsche pro Person → `accommodation_requests`
+  (Hotel, Kategorie, check_in/out, Mitbewohnerwunsch, Bemerkung), mehrere Zeilen
+  pro Person möglich. Auswählbar nur Hotels/Kategorien des eigenen Turniers.
+- Neue Edge Function `portal-accommodation`: Deadline zuerst (403), dann
+  dreifache Cross-Tournament-Kette – `person_not_in_delegation` /
+  `hotel_not_in_tournament` / `category_not_in_hotel` (je harte 400) und
+  `check_out > check_in`. `portal-session` liefert zusätzlich Hotels (mit
+  Kategorien) und die Wünsche der Delegation.
+
 **Meilenstein 4b Teil 1 – Einsatztag-Sichten (Fahrer & Koordinatoren)**
 
 - Schema V2 (`docs/delego_schema_v2_einsatztag.sql`): `drivers`, `coordinators`,
@@ -134,6 +152,10 @@ Hotelzuteilung). React + Vite + Supabase.
   Legt die Tabellen `drivers`, `coordinators`, `arrival_checkins`, `walkins` an,
   ergänzt `transfers.driver_id` und bringt RLS-Policies + GRANTs für die vier
   neuen Tabellen gleich mit.
+- **Für die Hotelkontingente (Meilenstein 5a): `docs/delego_schema_v3_hotelkontingente.sql`
+  einspielen** (SQL Editor → Run), **als 5. Schritt**. Legt `room_inventory`
+  (tagesgenaue Zimmerkontingente) an, ergänzt `rooms` um `check_in`/`check_out`/
+  `is_upgrade` und bringt RLS-Policies + GRANTs mit.
 - E-Mail-Auth ist aktiviert. Ist „Confirm email" eingeschaltet, müssen sich
   neue Nutzer erst per Bestätigungslink verifizieren.
 
@@ -143,6 +165,7 @@ Hotelzuteilung). React + Vite + Supabase.
 2. `docs/rpc_create_organization.sql` – Onboarding-RPC
 3. `docs/grants_v1.sql` – Tabellen-GRANTs
 4. `docs/delego_schema_v2_einsatztag.sql` – Einsatztag-Tabellen (Fahrer, Koordinatoren, Check-ins, Walk-ins)
+5. `docs/delego_schema_v3_hotelkontingente.sql` – Hotelkontingente (`room_inventory`, `rooms`-Spalten)
 
 ## Edge Functions deployen (für Meilenstein 2 / das Portal)
 
@@ -185,6 +208,7 @@ musst nichts zusätzlich konfigurieren.
    supabase functions deploy driver-session      --no-verify-jwt
    supabase functions deploy coordinator-session --no-verify-jwt
    supabase functions deploy coordinator-checkin --no-verify-jwt
+   supabase functions deploy portal-accommodation --no-verify-jwt
    ```
 
 5. Kurz prüfen (ungültiger Token muss `404 {"error":"invalid token"}` liefern;

@@ -583,6 +583,50 @@ textarea {
   color: #fff;
 }
 
+/* Zimmerkategorien innerhalb eines Hotels */
+.cat-panel {
+  border-top: 1px solid var(--border);
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  width: 100%;
+}
+
+/* Kontingent-Raster */
+.grid-scroll {
+  overflow-x: auto;
+  margin: 0.75rem 0;
+}
+
+.inv-grid {
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.inv-grid th,
+.inv-grid td {
+  border: 1px solid var(--border);
+  padding: 0.25rem 0.4rem;
+  text-align: center;
+}
+
+.inv-grid thead th {
+  background: var(--bg);
+  white-space: nowrap;
+}
+
+.inv-grid th.night {
+  background: var(--bg);
+  font-weight: 500;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.inv-cell {
+  width: 3.5rem;
+  padding: 0.3rem;
+  text-align: center;
+}
+
 /* Delegationszeile mit mehreren Blöcken untereinander */
 .item-col {
   flex-direction: column;

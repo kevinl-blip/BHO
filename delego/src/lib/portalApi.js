@@ -29,3 +29,15 @@ export function portalUpdateTravelGroup(token, travel_group) {
 export function portalDeleteTravelGroup(token, id) {
   return callFunction('portal-travel', { token, action: 'delete', travel_group: { id } })
 }
+
+export function portalCreateAccommodation(token, request) {
+  return callFunction('portal-accommodation', { token, action: 'create', request })
+}
+
+export function portalUpdateAccommodation(token, request) {
+  return callFunction('portal-accommodation', { token, action: 'update', request })
+}
+
+export function portalDeleteAccommodation(token, id) {
+  return callFunction('portal-accommodation', { token, action: 'delete', request: { id } })
+}
