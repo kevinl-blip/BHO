@@ -627,6 +627,11 @@ textarea {
   text-align: center;
 }
 
+.selfbook-tag {
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+
 /* Delegationszeile mit mehreren Blöcken untereinander */
 .item-col {
   flex-direction: column;

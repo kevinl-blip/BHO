@@ -295,7 +295,7 @@ export default function TournamentPage() {
 
               {expanded && (
                 <div className="person-panel">
-                  <DelegationPersons delegationId={d.id} personFields={personFields} />
+                  <DelegationPersons delegationId={d.id} personFields={personFields} hotels={hotels} />
                 </div>
               )}
             </li>

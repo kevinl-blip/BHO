@@ -28,6 +28,7 @@ export default function PortalAccommodation({ token, persons, hotels, requests, 
   )
   const selectedHotel = hotelById.get(form.hotel_id)
   const categoryOptions = selectedHotel?.room_categories ?? []
+  const selfBooked = selectedHotel && !selectedHotel.is_official
 
   function resetForm() {
     setForm(emptyForm)
@@ -69,9 +70,12 @@ export default function PortalAccommodation({ token, persons, hotels, requests, 
     setError(null)
     if (!form.person_id) return setError('Please choose a person.')
     if (!form.hotel_id) return setError('Please choose a hotel.')
-    if (!form.room_category_id) return setError('Please choose a room category.')
-    if (!form.check_in || !form.check_out) return setError('Please set check-in and check-out.')
-    if (form.check_out <= form.check_in) return setError('Check-out must be after check-in.')
+    // Selbstbucher: keine Kategorie/Daten nötig.
+    if (!selfBooked) {
+      if (!form.room_category_id) return setError('Please choose a room category.')
+      if (!form.check_in || !form.check_out) return setError('Please set check-in and check-out.')
+      if (form.check_out <= form.check_in) return setError('Check-out must be after check-in.')
+    }
 
     setSaving(true)
     try {
@@ -113,13 +117,17 @@ export default function PortalAccommodation({ token, persons, hotels, requests, 
         {requests.map((r) => {
           const hotel = hotelById.get(r.hotel_id)
           const cat = categoryById.get(r.room_category_id)
+          const selfBooked = hotel && !hotel.is_official
           return (
             <li key={r.id} className="item">
               <div>
                 <strong>{personById.get(r.person_id) ?? 'unknown person'}</strong>
+                {selfBooked && <span className="badge badge-free selfbook-tag">Self-booked</span>}
                 <div className="muted">
-                  {(hotel?.name ?? 'hotel')}{cat ? ` · ${cat.label}` : ''} · {r.check_in} → {r.check_out}
-                  {r.roommate_wish ? ` · with: ${r.roommate_wish}` : ''}
+                  {(hotel?.name ?? 'hotel')}
+                  {selfBooked
+                    ? ' · books own accommodation'
+                    : `${cat ? ` · ${cat.label}` : ''} · ${r.check_in} → ${r.check_out}${r.roommate_wish ? ` · with: ${r.roommate_wish}` : ''}`}
                   {r.remarks ? ` · ${r.remarks}` : ''}
                 </div>
               </div>
@@ -160,30 +168,42 @@ export default function PortalAccommodation({ token, persons, hotels, requests, 
                 ))}
               </select>
             </label>
-            <label>
-              Room category
-              <select value={form.room_category_id} onChange={setField('room_category_id')} disabled={!form.hotel_id}>
-                <option value="">— choose —</option>
-                {categoryOptions.map((c) => (
-                  <option key={c.id} value={c.id}>{c.label}</option>
-                ))}
-              </select>
-            </label>
+            {!selfBooked && (
+              <label>
+                Room category
+                <select value={form.room_category_id} onChange={setField('room_category_id')} disabled={!form.hotel_id}>
+                  <option value="">— choose —</option>
+                  {categoryOptions.map((c) => (
+                    <option key={c.id} value={c.id}>{c.label}</option>
+                  ))}
+                </select>
+              </label>
+            )}
           </div>
-          <div className="row">
-            <label>
-              Check-in
-              <input type="date" value={form.check_in} onChange={setField('check_in')} />
-            </label>
-            <label>
-              Check-out
-              <input type="date" value={form.check_out} onChange={setField('check_out')} />
-            </label>
-          </div>
-          <label>
-            Roommate wish
-            <input value={form.roommate_wish} onChange={setField('roommate_wish')} placeholder="optional (free text)" />
-          </label>
+
+          {selfBooked ? (
+            <div className="banner banner-open">
+              This hotel is self-booked — your delegation arranges it directly.
+              No room category or dates needed. Add anything relevant in the remarks.
+            </div>
+          ) : (
+            <>
+              <div className="row">
+                <label>
+                  Check-in
+                  <input type="date" value={form.check_in} onChange={setField('check_in')} />
+                </label>
+                <label>
+                  Check-out
+                  <input type="date" value={form.check_out} onChange={setField('check_out')} />
+                </label>
+              </div>
+              <label>
+                Roommate wish
+                <input value={form.roommate_wish} onChange={setField('roommate_wish')} placeholder="optional (free text)" />
+              </label>
+            </>
+          )}
           <label>
             Remarks
             <input value={form.remarks} onChange={setField('remarks')} placeholder="optional" />

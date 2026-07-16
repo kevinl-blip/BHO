@@ -15,7 +15,7 @@ import { corsHeaders, json } from '../_shared/cors.ts'
 import {
   adminClient,
   categoryInHotel,
-  hotelInTournament,
+  getHotelInTournament,
   listAccommodationRequests,
   listDelegationPersonIds,
   resolveToken,
@@ -81,30 +81,51 @@ Deno.serve(async (req) => {
       if ('error' in pCheck) {
         return json({ error: 'person_not_in_delegation', message: 'Diese Person gehört nicht zu dieser Delegation.' }, 400)
       }
-      // 2) Hotel gehört zum Turnier des Tokens.
-      if (!(await hotelInTournament(admin, ctx.tournamentId, hotelId))) {
+      // 2) Hotel gehört zum Turnier des Tokens (inkl. is_official).
+      const hotel = await getHotelInTournament(admin, ctx.tournamentId, hotelId)
+      if (!hotel) {
         return json({ error: 'hotel_not_in_tournament', message: 'Dieses Hotel gehört nicht zu diesem Turnier.' }, 400)
       }
-      // 3) Kategorie gehört zum angegebenen Hotel.
-      if (!(await categoryInHotel(admin, hotelId as string, categoryId))) {
-        return json({ error: 'category_not_in_hotel', message: 'Diese Zimmerkategorie gehört nicht zum gewählten Hotel.' }, 400)
-      }
-      // 4) Zeitraum plausibel.
-      if (!validDate(f.check_in) || !validDate(f.check_out)) {
-        return json({ error: 'check_in/check_out sind Pflicht (gültiges Datum)' }, 400)
-      }
-      if (f.check_out <= f.check_in) {
-        return json({ error: 'check_out muss nach check_in liegen' }, 400)
-      }
 
-      const payload = {
-        person_id: personId,
-        hotel_id: hotelId,
-        room_category_id: categoryId,
-        check_in: f.check_in,
-        check_out: f.check_out,
-        roommate_wish: f.roommate_wish,
-        remarks: f.remarks,
+      let payload
+      if (hotel.is_official) {
+        // Offizielles Hotel: Kategorie und Zeitraum sind Pflicht.
+        if (!categoryId) {
+          return json({ error: 'category_required_for_official_hotel', message: 'Bei einem offiziellen Hotel ist die Zimmerkategorie Pflicht.' }, 400)
+        }
+        // 3) Kategorie gehört zum angegebenen Hotel.
+        if (!(await categoryInHotel(admin, hotel.id, categoryId))) {
+          return json({ error: 'category_not_in_hotel', message: 'Diese Zimmerkategorie gehört nicht zum gewählten Hotel.' }, 400)
+        }
+        // 4) Zeitraum plausibel.
+        if (!validDate(f.check_in) || !validDate(f.check_out)) {
+          return json({ error: 'dates_required_for_official_hotel', message: 'Bei einem offiziellen Hotel sind Check-in und Check-out Pflicht.' }, 400)
+        }
+        if (f.check_out <= f.check_in) {
+          return json({ error: 'check_out muss nach check_in liegen' }, 400)
+        }
+        payload = {
+          person_id: personId,
+          hotel_id: hotel.id,
+          room_category_id: categoryId,
+          check_in: f.check_in,
+          check_out: f.check_out,
+          roommate_wish: f.roommate_wish,
+          remarks: f.remarks,
+        }
+      } else {
+        // Selbstbucher-Hotel: Kategorie und Zeitraum sind bedeutungslos und
+        // werden auf null normalisiert (ignoriert, kein 400). Der Eintrag hält
+        // fest: "bucht selbst" – plus optionale Freitext-Bemerkung.
+        payload = {
+          person_id: personId,
+          hotel_id: hotel.id,
+          room_category_id: null,
+          check_in: null,
+          check_out: null,
+          roommate_wish: f.roommate_wish,
+          remarks: f.remarks,
+        }
       }
 
       if (action === 'create') {

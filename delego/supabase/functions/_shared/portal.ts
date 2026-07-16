@@ -247,21 +247,22 @@ export async function listAccommodationRequests(admin: SupabaseClient, personIds
   return data ?? []
 }
 
-// Hotel gehört zum Turnier des Tokens?
-export async function hotelInTournament(
+// Hotel gehört zum Turnier des Tokens? Gibt das Hotel (inkl. is_official)
+// zurück oder null. is_official entscheidet, ob Kategorie/Zeitraum Pflicht sind.
+export async function getHotelInTournament(
   admin: SupabaseClient,
   tournamentId: string,
   hotelId: unknown,
-): Promise<boolean> {
-  if (typeof hotelId !== 'string') return false
+): Promise<{ id: string; is_official: boolean } | null> {
+  if (typeof hotelId !== 'string') return null
   const { data, error } = await admin
     .from('hotels')
-    .select('id')
+    .select('id, is_official')
     .eq('id', hotelId)
     .eq('tournament_id', tournamentId)
     .maybeSingle()
   if (error) throw error
-  return !!data
+  return data ? { id: data.id, is_official: data.is_official } : null
 }
 
 // Zimmerkategorie gehört zum angegebenen Hotel (und damit transitiv zum Turnier)?
