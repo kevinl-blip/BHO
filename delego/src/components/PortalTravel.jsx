@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useEditScroll } from '../lib/useEditScroll'
 import {
   portalCreateTravelGroup,
   portalDeleteTravelGroup,
@@ -34,11 +35,12 @@ function formatWhen(iso) {
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleString('en-GB')
 }
 
-export default function PortalTravel({ token, persons, travelGroups, readOnly, onChange }) {
+export default function PortalTravel({ token, persons, travelGroups, readOnly, onChange, embedded }) {
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
+  const editRef = useEditScroll(editingId)
 
   const personById = new Map(persons.map((p) => [p.id, p]))
   const arrivals = travelGroups.filter((g) => g.direction === 'arrival')
@@ -151,8 +153,8 @@ export default function PortalTravel({ token, persons, travelGroups, readOnly, o
   }
 
   return (
-    <div className="card">
-      <h3>Travel</h3>
+    <div className={embedded ? undefined : 'card'}>
+      {!embedded && <h3>Travel</h3>}
       <p className="muted">
         Add how your delegation arrives and departs. Each travel group records
         one arrival or departure (time, place, flight/train no.) and who travels.
@@ -167,7 +169,7 @@ export default function PortalTravel({ token, persons, travelGroups, readOnly, o
       <ul className="item-list">{departures.map(renderGroup)}</ul>
 
       {!readOnly && (
-        <form onSubmit={handleSubmit} className="stack field-form">
+        <form ref={editRef} onSubmit={handleSubmit} className="stack field-form">
           <h4>{editingId ? 'Edit travel group' : 'Add travel group'}</h4>
           <div className="row">
             <label>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import PersonFieldsEditor from '../components/PersonFieldsEditor'
 import DelegationPersons from '../components/DelegationPersons'
@@ -9,6 +9,7 @@ import TokenStaffManager from '../components/TokenStaffManager'
 import ArrivalBoard from '../components/ArrivalBoard'
 import HotelsManager from '../components/HotelsManager'
 import InventoryManager from '../components/InventoryManager'
+import { useEditScroll } from '../lib/useEditScroll'
 
 const emptyForm = {
   name: '',
@@ -26,6 +27,13 @@ function portalLink(token) {
   return `${window.location.origin}/portal/${token}`
 }
 
+const TABS = [
+  { key: 'delegationen', label: 'Delegationen' },
+  { key: 'hotels', label: 'Hotels' },
+  { key: 'logistik', label: 'Logistik' },
+  { key: 'einsatztag', label: 'Einsatztag' },
+]
+
 export default function TournamentPage() {
   const { tournamentId } = useParams()
   const [tournament, setTournament] = useState(null)
@@ -41,6 +49,18 @@ export default function TournamentPage() {
   const [drivers, setDrivers] = useState([])
   const [coordinators, setCoordinators] = useState([])
   const [hotels, setHotels] = useState([])
+
+  // Aktiver Tab in der URL (?tab=…), damit Reload/Zurück den Tab behalten.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tabParam = searchParams.get('tab')
+  const activeTab = TABS.some((t) => t.key === tabParam) ? tabParam : 'delegationen'
+  function selectTab(key) {
+    const next = new URLSearchParams(searchParams)
+    next.set('tab', key)
+    setSearchParams(next, { replace: true })
+  }
+
+  const delegationEditRef = useEditScroll(editingId)
 
   const personFields = Array.isArray(tournament?.settings?.person_fields)
     ? tournament.settings.person_fields
@@ -160,7 +180,6 @@ export default function TournamentPage() {
       notes: d.notes ?? '',
     })
     setError(null)
-    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
   }
 
   function resetForm() {
@@ -249,146 +268,166 @@ export default function TournamentPage() {
         </p>
       )}
 
-      <h3>Delegationen &amp; Meldestand</h3>
-      {delegations === null && <p className="muted">Lade …</p>}
-      {delegations?.length === 0 && <p className="muted">Noch keine Delegationen angelegt.</p>}
+      <nav className="tabbar" role="tablist">
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            role="tab"
+            aria-selected={activeTab === t.key}
+            className={activeTab === t.key ? 'tabbar-btn active' : 'tabbar-btn'}
+            onClick={() => selectTab(t.key)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
 
-      <ul className="item-list">
-        {delegations?.map((d) => {
-          const count = counts[d.id] ?? 0
-          const expanded = expandedId === d.id
-          return (
-            <li key={d.id} className="item item-col">
-              <div className="item-row">
-                <div>
-                  <strong>{d.name}</strong>
-                  {d.country_code ? <span className="muted"> · {d.country_code}</span> : null}
-                  <div className="muted">
-                    {d.contact_name || '—'}
-                    {d.contact_email ? ` · ${d.contact_email}` : ''}
-                    {d.contact_phone ? ` · ${d.contact_phone}` : ''}
+      {/* ---------- Tab: Delegationen ---------- */}
+      {activeTab === 'delegationen' && (
+        <>
+          <h3>Delegationen &amp; Meldestand</h3>
+          {delegations === null && <p className="muted">Lade …</p>}
+          {delegations?.length === 0 && <p className="muted">Noch keine Delegationen angelegt.</p>}
+
+          <ul className="item-list">
+            {delegations?.map((d) => {
+              const count = counts[d.id] ?? 0
+              const expanded = expandedId === d.id
+              return (
+                <li key={d.id} className="item item-col">
+                  <div className="item-row">
+                    <div>
+                      <strong>{d.name}</strong>
+                      {d.country_code ? <span className="muted"> · {d.country_code}</span> : null}
+                      <div className="muted">
+                        {d.contact_name || '—'}
+                        {d.contact_email ? ` · ${d.contact_email}` : ''}
+                        {d.contact_phone ? ` · ${d.contact_phone}` : ''}
+                      </div>
+                    </div>
+                    <div className="meld-status">
+                      <span className={count === 0 ? 'count count-zero' : 'count'}>
+                        {count} {count === 1 ? 'Person' : 'Personen'}
+                      </span>
+                      <span className="badge">{d.status}</span>
+                    </div>
                   </div>
-                </div>
-                <div className="meld-status">
-                  <span className={count === 0 ? 'count count-zero' : 'count'}>
-                    {count} {count === 1 ? 'Person' : 'Personen'}
-                  </span>
-                  <span className="badge">{d.status}</span>
-                </div>
-              </div>
 
-              <div className="link-row">
-                <input readOnly value={portalLink(d.access_token)} onFocus={(e) => e.target.select()} />
-                <button onClick={() => copyLink(d)}>
-                  {copiedId === d.id ? 'Kopiert ✓' : 'Kopieren'}
-                </button>
-              </div>
+                  <div className="link-row">
+                    <input readOnly value={portalLink(d.access_token)} onFocus={(e) => e.target.select()} />
+                    <button onClick={() => copyLink(d)}>
+                      {copiedId === d.id ? 'Kopiert ✓' : 'Kopieren'}
+                    </button>
+                  </div>
 
+                  <div className="actions">
+                    <button onClick={() => setExpandedId(expanded ? null : d.id)}>
+                      {expanded ? 'Personen ausblenden' : `Personen anzeigen (${count})`}
+                    </button>
+                    <button onClick={() => startEdit(d)}>Bearbeiten</button>
+                    <button onClick={() => handleRegenerate(d)}>Link neu erzeugen</button>
+                    <button onClick={() => handleDelete(d)}>Löschen</button>
+                  </div>
+
+                  {expanded && (
+                    <div className="person-panel">
+                      <DelegationPersons delegationId={d.id} personFields={personFields} hotels={hotels} />
+                    </div>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+
+          <div className="card">
+            <h3>{editingId ? 'Delegation bearbeiten' : 'Neue Delegation'}</h3>
+            <form ref={delegationEditRef} onSubmit={handleSubmit} className="stack">
+              <div className="row">
+                <label>
+                  Name
+                  <input value={form.name} onChange={setField('name')} required
+                    placeholder="z. B. Deutschland Nord" />
+                </label>
+                <label>
+                  Länderkürzel
+                  <input value={form.country_code} onChange={setField('country_code')}
+                    placeholder="z. B. DEU-NR" />
+                </label>
+              </div>
+              <label>
+                Ansprechpartner
+                <input value={form.contact_name} onChange={setField('contact_name')} placeholder="optional" />
+              </label>
+              <div className="row">
+                <label>
+                  E-Mail
+                  <input type="email" value={form.contact_email} onChange={setField('contact_email')}
+                    placeholder="optional" />
+                </label>
+                <label>
+                  Telefon
+                  <input value={form.contact_phone} onChange={setField('contact_phone')} placeholder="optional" />
+                </label>
+              </div>
+              <label>
+                Notizen
+                <input value={form.notes} onChange={setField('notes')} placeholder="optional" />
+              </label>
+              {error && <p className="error">{error}</p>}
               <div className="actions">
-                <button onClick={() => setExpandedId(expanded ? null : d.id)}>
-                  {expanded ? 'Personen ausblenden' : `Personen anzeigen (${count})`}
+                <button type="submit" className="primary" disabled={busy}>
+                  {busy ? 'Bitte warten …' : editingId ? 'Änderungen speichern' : 'Delegation anlegen'}
                 </button>
-                <button onClick={() => startEdit(d)}>Bearbeiten</button>
-                <button onClick={() => handleRegenerate(d)}>Link neu erzeugen</button>
-                <button onClick={() => handleDelete(d)}>Löschen</button>
+                {editingId && <button type="button" onClick={resetForm} disabled={busy}>Abbrechen</button>}
               </div>
-
-              {expanded && (
-                <div className="person-panel">
-                  <DelegationPersons delegationId={d.id} personFields={personFields} hotels={hotels} />
-                </div>
-              )}
-            </li>
-          )
-        })}
-      </ul>
-
-      {tournament && <ArrivalBoard tournamentId={tournamentId} />}
-
-      {tournament && (
-        <TravelDisposition
-          tournamentId={tournamentId}
-          vehicles={vehicles}
-          drivers={drivers}
-          venue={tournament.venue}
-        />
-      )}
-
-      {tournament && <VehiclesManager tournamentId={tournamentId} vehicles={vehicles} onChanged={loadVehicles} />}
-
-      {tournament && (
-        <TokenStaffManager
-          table="drivers"
-          title="Fahrer"
-          linkPath="driver"
-          tournamentId={tournamentId}
-          items={drivers}
-          onChanged={loadDrivers}
-        />
-      )}
-
-      {tournament && (
-        <TokenStaffManager
-          table="coordinators"
-          title="Koordinatoren"
-          linkPath="coordinator"
-          tournamentId={tournamentId}
-          items={coordinators}
-          onChanged={loadCoordinators}
-        />
-      )}
-
-      {tournament && <HotelsManager tournamentId={tournamentId} hotels={hotels} onChanged={loadHotels} />}
-
-      {tournament && (
-        <InventoryManager hotels={hotels} startsOn={tournament.starts_on} endsOn={tournament.ends_on} />
-      )}
-
-      {tournament && <PersonFieldsEditor fields={personFields} onChange={saveFields} />}
-
-      <div className="card">
-        <h3>{editingId ? 'Delegation bearbeiten' : 'Neue Delegation'}</h3>
-        <form onSubmit={handleSubmit} className="stack">
-          <div className="row">
-            <label>
-              Name
-              <input value={form.name} onChange={setField('name')} required
-                placeholder="z. B. Deutschland Nord" />
-            </label>
-            <label>
-              Länderkürzel
-              <input value={form.country_code} onChange={setField('country_code')}
-                placeholder="z. B. DEU-NR" />
-            </label>
+            </form>
           </div>
-          <label>
-            Ansprechpartner
-            <input value={form.contact_name} onChange={setField('contact_name')} placeholder="optional" />
-          </label>
-          <div className="row">
-            <label>
-              E-Mail
-              <input type="email" value={form.contact_email} onChange={setField('contact_email')}
-                placeholder="optional" />
-            </label>
-            <label>
-              Telefon
-              <input value={form.contact_phone} onChange={setField('contact_phone')} placeholder="optional" />
-            </label>
-          </div>
-          <label>
-            Notizen
-            <input value={form.notes} onChange={setField('notes')} placeholder="optional" />
-          </label>
-          {error && <p className="error">{error}</p>}
-          <div className="actions">
-            <button type="submit" className="primary" disabled={busy}>
-              {busy ? 'Bitte warten …' : editingId ? 'Änderungen speichern' : 'Delegation anlegen'}
-            </button>
-            {editingId && <button type="button" onClick={resetForm} disabled={busy}>Abbrechen</button>}
-          </div>
-        </form>
-      </div>
+
+          {tournament && <PersonFieldsEditor fields={personFields} onChange={saveFields} />}
+        </>
+      )}
+
+      {/* ---------- Tab: Hotels ---------- */}
+      {activeTab === 'hotels' && tournament && (
+        <>
+          <HotelsManager tournamentId={tournamentId} hotels={hotels} onChanged={loadHotels} />
+          <InventoryManager hotels={hotels} startsOn={tournament.starts_on} endsOn={tournament.ends_on} />
+        </>
+      )}
+
+      {/* ---------- Tab: Logistik ---------- */}
+      {activeTab === 'logistik' && tournament && (
+        <>
+          <TokenStaffManager
+            table="drivers"
+            title="Fahrer"
+            linkPath="driver"
+            tournamentId={tournamentId}
+            items={drivers}
+            onChanged={loadDrivers}
+          />
+          <TokenStaffManager
+            table="coordinators"
+            title="Koordinatoren"
+            linkPath="coordinator"
+            tournamentId={tournamentId}
+            items={coordinators}
+            onChanged={loadCoordinators}
+          />
+          <VehiclesManager tournamentId={tournamentId} vehicles={vehicles} onChanged={loadVehicles} />
+          <TravelDisposition
+            tournamentId={tournamentId}
+            vehicles={vehicles}
+            drivers={drivers}
+            venue={tournament.venue}
+          />
+        </>
+      )}
+
+      {/* ---------- Tab: Einsatztag ---------- */}
+      {activeTab === 'einsatztag' && tournament && (
+        <ArrivalBoard tournamentId={tournamentId} />
+      )}
     </div>
   )
 }

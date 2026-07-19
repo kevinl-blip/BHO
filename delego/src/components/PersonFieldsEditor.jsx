@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { FIELD_TYPES, generateFieldKey } from '../lib/personFields'
+import { useEditScroll } from '../lib/useEditScroll'
 
 // Verwaltet die turnierspezifischen Personenfelder. `fields` kommt aus
 // tournaments.settings.person_fields; jede Änderung wird über onChange(next)
@@ -11,6 +12,7 @@ export default function PersonFieldsEditor({ fields, onChange }) {
   const [editingKey, setEditingKey] = useState(null)
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
+  const editRef = useEditScroll(editingKey)
 
   const list = Array.isArray(fields) ? fields : []
 
@@ -126,7 +128,7 @@ export default function PersonFieldsEditor({ fields, onChange }) {
         ))}
       </ul>
 
-      <form onSubmit={handleSave} className="stack field-form">
+      <form ref={editRef} onSubmit={handleSave} className="stack field-form">
         <h4>{editingKey ? 'Feld bearbeiten' : 'Feld hinzufügen'}</h4>
         <div className="row">
           <label>

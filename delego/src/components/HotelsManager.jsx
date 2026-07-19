@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { useEditScroll } from '../lib/useEditScroll'
 
 // Teil A: Hotels und Zimmerkategorien eines Turniers. Direkter Tabellenzugriff
 // über den authentifizierten Client; RLS (hot_write / rc_write) erlaubt
@@ -11,6 +12,7 @@ function CategoryManager({ hotelId, categories, onChanged }) {
   const [form, setForm] = useState(emptyCat)
   const [editingId, setEditingId] = useState(null)
   const [error, setError] = useState(null)
+  const editRef = useEditScroll(editingId)
 
   function reset() {
     setForm(emptyCat)
@@ -63,7 +65,7 @@ function CategoryManager({ hotelId, categories, onChanged }) {
           </li>
         ))}
       </ul>
-      <form onSubmit={save} className="stack">
+      <form ref={editRef} onSubmit={save} className="stack">
         <div className="row">
           <label>
             Bezeichnung
@@ -92,6 +94,7 @@ export default function HotelsManager({ tournamentId, hotels, onChanged }) {
   const [form, setForm] = useState(emptyHotel)
   const [editingId, setEditingId] = useState(null)
   const [error, setError] = useState(null)
+  const editRef = useEditScroll(editingId)
   const [expandedId, setExpandedId] = useState(null)
 
   function reset() {
@@ -153,7 +156,7 @@ export default function HotelsManager({ tournamentId, hotels, onChanged }) {
         ))}
       </ul>
 
-      <form onSubmit={save} className="stack field-form">
+      <form ref={editRef} onSubmit={save} className="stack field-form">
         <h4>{editingId ? 'Hotel bearbeiten' : 'Hotel hinzufügen'}</h4>
         <div className="row">
           <label>

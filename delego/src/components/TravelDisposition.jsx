@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { useEditScroll } from '../lib/useEditScroll'
 
 const STATUSES = ['unassigned', 'assigned', 'en_route', 'completed']
 
@@ -43,6 +44,7 @@ export default function TravelDisposition({ tournamentId, vehicles, drivers, ven
   const [editingId, setEditingId] = useState(null)
   const [editForm, setEditForm] = useState(emptyEdit)
   const [error, setError] = useState(null)
+  const editRef = useEditScroll(editingId)
 
   const load = useCallback(async () => {
     const [gRes, tRes] = await Promise.all([
@@ -272,7 +274,7 @@ export default function TravelDisposition({ tournamentId, vehicles, drivers, ven
               </div>
 
               {editingId === t.id ? (
-                <div className="stack transfer-edit">
+                <div ref={editRef} className="stack transfer-edit">
                   <div className="row">
                     <label>
                       Fahrer
