@@ -9,6 +9,7 @@ import {
 import { firstMissingRequired } from '../lib/personFields'
 import PortalTravel from '../components/PortalTravel'
 import PortalAccommodation from '../components/PortalAccommodation'
+import CollapsibleSection from '../components/CollapsibleSection'
 
 const ROLES = ['athlete', 'coach', 'official']
 
@@ -26,6 +27,9 @@ export default function PortalPage() {
   const [editingId, setEditingId] = useState(null)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState(null)
+  // Aufklappzustand der Portal-Abschnitte (Accordion), standardmäßig zu.
+  const [open, setOpen] = useState({ people: false, travel: false, accommodation: false })
+  const toggle = (key) => setOpen((o) => ({ ...o, [key]: !o[key] }))
 
   const load = useCallback(async () => {
     setState({ loading: true, error: null, data: null })
@@ -63,6 +67,13 @@ export default function PortalPage() {
   const accommodationRequests = Array.isArray(state.data.accommodation_requests)
     ? state.data.accommodation_requests
     : []
+
+  // Status-Chip pro Abschnitt: gefüllt = grün, leer = „To do" (bzw. „none"
+  // nach Meldeschluss). Gibt der Delegation den Überblick, was noch fehlt.
+  function sectionStatus(n, unit) {
+    if (n > 0) return { status: `${n} ${unit}`, statusKind: 'done' }
+    return readOnly ? { status: 'none', statusKind: undefined } : { status: 'To do', statusKind: 'todo' }
+  }
   const personFields = Array.isArray(tournament.person_fields) ? tournament.person_fields : []
   const deadlineText = tournament.submission_deadline
     ? new Date(tournament.submission_deadline).toLocaleString('en-GB')
@@ -189,8 +200,12 @@ export default function PortalPage() {
         </div>
       ) : null}
 
-      <div className="card">
-        <h3>People ({persons.length})</h3>
+      <CollapsibleSection
+        title="People"
+        {...sectionStatus(persons.length, persons.length === 1 ? 'person' : 'people')}
+        open={open.people}
+        onToggle={() => toggle('people')}
+      >
         {persons.length === 0 && <p className="muted">No people added yet.</p>}
         <ul className="item-list">
           {persons.map((p) => (
@@ -219,12 +234,10 @@ export default function PortalPage() {
             </li>
           ))}
         </ul>
-      </div>
 
-      {!readOnly && (
-        <div className="card">
-          <h3>{editingId ? 'Edit person' : 'Add person'}</h3>
-          <form onSubmit={handleSubmit} className="stack">
+        {!readOnly && (
+          <form onSubmit={handleSubmit} className="stack field-form">
+            <h4>{editingId ? 'Edit person' : 'Add person'}</h4>
             <div className="row">
               <label>
                 Last name
@@ -304,25 +317,41 @@ export default function PortalPage() {
               )}
             </div>
           </form>
-        </div>
-      )}
+        )}
+      </CollapsibleSection>
 
-      <PortalTravel
-        token={token}
-        persons={persons}
-        travelGroups={travelGroups}
-        readOnly={readOnly}
-        onChange={handleTravelChange}
-      />
+      <CollapsibleSection
+        title="Travel"
+        {...sectionStatus(travelGroups.length, travelGroups.length === 1 ? 'group' : 'groups')}
+        open={open.travel}
+        onToggle={() => toggle('travel')}
+      >
+        <PortalTravel
+          token={token}
+          persons={persons}
+          travelGroups={travelGroups}
+          readOnly={readOnly}
+          onChange={handleTravelChange}
+          embedded
+        />
+      </CollapsibleSection>
 
-      <PortalAccommodation
-        token={token}
-        persons={persons}
-        hotels={hotels}
-        requests={accommodationRequests}
-        readOnly={readOnly}
-        onChange={handleAccommodationChange}
-      />
+      <CollapsibleSection
+        title="Accommodation"
+        {...sectionStatus(accommodationRequests.length, accommodationRequests.length === 1 ? 'request' : 'requests')}
+        open={open.accommodation}
+        onToggle={() => toggle('accommodation')}
+      >
+        <PortalAccommodation
+          token={token}
+          persons={persons}
+          hotels={hotels}
+          requests={accommodationRequests}
+          readOnly={readOnly}
+          onChange={handleAccommodationChange}
+          embedded
+        />
+      </CollapsibleSection>
     </div>
   )
 }

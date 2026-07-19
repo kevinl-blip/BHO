@@ -34,7 +34,7 @@ function formatWhen(iso) {
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleString('en-GB')
 }
 
-export default function PortalTravel({ token, persons, travelGroups, readOnly, onChange }) {
+export default function PortalTravel({ token, persons, travelGroups, readOnly, onChange, embedded }) {
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -151,8 +151,8 @@ export default function PortalTravel({ token, persons, travelGroups, readOnly, o
   }
 
   return (
-    <div className="card">
-      <h3>Travel</h3>
+    <div className={embedded ? undefined : 'card'}>
+      {!embedded && <h3>Travel</h3>}
       <p className="muted">
         Add how your delegation arrives and departs. Each travel group records
         one arrival or departure (time, place, flight/train no.) and who travels.

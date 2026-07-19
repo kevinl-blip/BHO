@@ -632,6 +632,98 @@ textarea {
   vertical-align: middle;
 }
 
+/* Veranstalter-Tabs (Turnier-Ansicht) */
+.tabbar {
+  display: flex;
+  gap: 0.25rem;
+  margin: 1rem 0 1.5rem;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tabbar-btn {
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  padding: 0.6rem 0.9rem;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tabbar-btn:hover {
+  color: var(--text);
+}
+
+.tabbar-btn.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+/* Portal: aufklappbare Abschnitte (Accordion) */
+.portal-section {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  margin-top: 1rem;
+  overflow: hidden;
+}
+
+.section-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.9rem 1.1rem;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.section-header .section-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #111;
+  flex: 1;
+}
+
+.section-header .chevron {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.section-status {
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.section-status.done {
+  background: #eef7ee;
+  border-color: #c9e6c9;
+  color: var(--info);
+}
+
+.section-status.todo {
+  background: #fff6e6;
+  border-color: #f3d9a6;
+  color: #9a6a00;
+}
+
+.section-body {
+  padding: 0 1.1rem 1.1rem;
+}
+
 /* Delegationszeile mit mehreren Blöcken untereinander */
 .item-col {
   flex-direction: column;

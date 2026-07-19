@@ -15,7 +15,7 @@ const emptyForm = {
   remarks: '',
 }
 
-export default function PortalAccommodation({ token, persons, hotels, requests, readOnly, onChange }) {
+export default function PortalAccommodation({ token, persons, hotels, requests, readOnly, onChange, embedded }) {
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -105,8 +105,8 @@ export default function PortalAccommodation({ token, persons, hotels, requests, 
   }
 
   return (
-    <div className="card">
-      <h3>Accommodation requests</h3>
+    <div className={embedded ? undefined : 'card'}>
+      {!embedded && <h3>Accommodation requests</h3>}
       <p className="muted">
         Per person you can add one or more rows (e.g. 1 night single, then 2 nights
         double). Choose a hotel and room category, and the nights.
