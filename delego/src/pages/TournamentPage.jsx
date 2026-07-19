@@ -7,6 +7,8 @@ import VehiclesManager from '../components/VehiclesManager'
 import TravelDisposition from '../components/TravelDisposition'
 import TokenStaffManager from '../components/TokenStaffManager'
 import ArrivalBoard from '../components/ArrivalBoard'
+import HotelsManager from '../components/HotelsManager'
+import InventoryManager from '../components/InventoryManager'
 
 const emptyForm = {
   name: '',
@@ -38,6 +40,7 @@ export default function TournamentPage() {
   const [vehicles, setVehicles] = useState([])
   const [drivers, setDrivers] = useState([])
   const [coordinators, setCoordinators] = useState([])
+  const [hotels, setHotels] = useState([])
 
   const personFields = Array.isArray(tournament?.settings?.person_fields)
     ? tournament.settings.person_fields
@@ -71,9 +74,19 @@ export default function TournamentPage() {
     setCoordinators(data ?? [])
   }, [tournamentId])
 
+  const loadHotels = useCallback(async () => {
+    const { data } = await supabase
+      .from('hotels')
+      .select('id, name, address, is_official, room_categories ( id, label, capacity, price_per_person_night )')
+      .eq('tournament_id', tournamentId)
+      .order('name', { ascending: true })
+    setHotels(data ?? [])
+  }, [tournamentId])
+
   useEffect(() => { loadVehicles() }, [loadVehicles])
   useEffect(() => { loadDrivers() }, [loadDrivers])
   useEffect(() => { loadCoordinators() }, [loadCoordinators])
+  useEffect(() => { loadHotels() }, [loadHotels])
 
   const load = useCallback(async () => {
     const [tRes, dRes] = await Promise.all([
@@ -282,7 +295,7 @@ export default function TournamentPage() {
 
               {expanded && (
                 <div className="person-panel">
-                  <DelegationPersons delegationId={d.id} personFields={personFields} />
+                  <DelegationPersons delegationId={d.id} personFields={personFields} hotels={hotels} />
                 </div>
               )}
             </li>
@@ -323,6 +336,12 @@ export default function TournamentPage() {
           items={coordinators}
           onChanged={loadCoordinators}
         />
+      )}
+
+      {tournament && <HotelsManager tournamentId={tournamentId} hotels={hotels} onChanged={loadHotels} />}
+
+      {tournament && (
+        <InventoryManager hotels={hotels} startsOn={tournament.starts_on} endsOn={tournament.ends_on} />
       )}
 
       {tournament && <PersonFieldsEditor fields={personFields} onChange={saveFields} />}

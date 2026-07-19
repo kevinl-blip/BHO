@@ -17,6 +17,7 @@ export function adminClient(): SupabaseClient {
 
 export type DelegationContext = {
   delegationId: string
+  tournamentId: string
   status: string
   tournament: {
     name: string
@@ -39,7 +40,7 @@ export async function resolveToken(
   const { data, error } = await admin
     .from('delegations')
     .select(
-      'id, status, tournaments!inner ( name, starts_on, ends_on, venue, submission_deadline, settings )',
+      'id, status, tournament_id, tournaments!inner ( name, starts_on, ends_on, venue, submission_deadline, settings )',
     )
     .eq('access_token', token)
     .maybeSingle()
@@ -55,6 +56,7 @@ export async function resolveToken(
 
   return {
     delegationId: data.id,
+    tournamentId: data.tournament_id,
     status: data.status,
     tournament: {
       name: t.name,
@@ -205,4 +207,77 @@ export async function validateDelegationPersons(
   const foreign = wanted.filter((id) => !valid.has(id))
   if (foreign.length > 0) return { error: 'person_not_in_delegation' }
   return { ok: wanted }
+}
+
+// ------------------------------------------------------------
+// Unterkunftswünsche (V3): Hotels/Kategorien des Turniers + Wünsche der
+// Delegation lesen, Cross-Tournament-Schutz für Hotel/Kategorie.
+// ------------------------------------------------------------
+
+export async function listHotelsWithCategories(admin: SupabaseClient, tournamentId: string) {
+  const { data, error } = await admin
+    .from('hotels')
+    .select('id, name, address, is_official, room_categories ( id, label, capacity, price_per_person_night )')
+    .eq('tournament_id', tournamentId)
+    .order('name', { ascending: true })
+  if (error) throw error
+  return (data ?? []).map((h) => ({
+    id: h.id,
+    name: h.name,
+    address: h.address,
+    is_official: h.is_official,
+    room_categories: Array.isArray(h.room_categories) ? h.room_categories : [],
+  }))
+}
+
+export async function listDelegationPersonIds(admin: SupabaseClient, delegationId: string) {
+  const { data, error } = await admin.from('persons').select('id').eq('delegation_id', delegationId)
+  if (error) throw error
+  return (data ?? []).map((r) => r.id as string)
+}
+
+export async function listAccommodationRequests(admin: SupabaseClient, personIds: string[]) {
+  if (personIds.length === 0) return []
+  const { data, error } = await admin
+    .from('accommodation_requests')
+    .select('id, person_id, hotel_id, room_category_id, check_in, check_out, roommate_wish, remarks')
+    .in('person_id', personIds)
+    .order('check_in', { ascending: true })
+  if (error) throw error
+  return data ?? []
+}
+
+// Hotel gehört zum Turnier des Tokens? Gibt das Hotel (inkl. is_official)
+// zurück oder null. is_official entscheidet, ob Kategorie/Zeitraum Pflicht sind.
+export async function getHotelInTournament(
+  admin: SupabaseClient,
+  tournamentId: string,
+  hotelId: unknown,
+): Promise<{ id: string; is_official: boolean } | null> {
+  if (typeof hotelId !== 'string') return null
+  const { data, error } = await admin
+    .from('hotels')
+    .select('id, is_official')
+    .eq('id', hotelId)
+    .eq('tournament_id', tournamentId)
+    .maybeSingle()
+  if (error) throw error
+  return data ? { id: data.id, is_official: data.is_official } : null
+}
+
+// Zimmerkategorie gehört zum angegebenen Hotel (und damit transitiv zum Turnier)?
+export async function categoryInHotel(
+  admin: SupabaseClient,
+  hotelId: string,
+  categoryId: unknown,
+): Promise<boolean> {
+  if (typeof categoryId !== 'string') return false
+  const { data, error } = await admin
+    .from('room_categories')
+    .select('id')
+    .eq('id', categoryId)
+    .eq('hotel_id', hotelId)
+    .maybeSingle()
+  if (error) throw error
+  return !!data
 }

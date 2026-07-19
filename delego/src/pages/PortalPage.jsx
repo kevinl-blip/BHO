@@ -8,6 +8,7 @@ import {
 } from '../lib/portalApi'
 import { firstMissingRequired } from '../lib/personFields'
 import PortalTravel from '../components/PortalTravel'
+import PortalAccommodation from '../components/PortalAccommodation'
 
 const ROLES = ['athlete', 'coach', 'official']
 
@@ -58,6 +59,10 @@ export default function PortalPage() {
 
   const { tournament, persons, read_only: readOnly } = state.data
   const travelGroups = Array.isArray(state.data.travel_groups) ? state.data.travel_groups : []
+  const hotels = Array.isArray(state.data.hotels) ? state.data.hotels : []
+  const accommodationRequests = Array.isArray(state.data.accommodation_requests)
+    ? state.data.accommodation_requests
+    : []
   const personFields = Array.isArray(tournament.person_fields) ? tournament.person_fields : []
   const deadlineText = tournament.submission_deadline
     ? new Date(tournament.submission_deadline).toLocaleString('en-GB')
@@ -69,6 +74,17 @@ export default function PortalPage() {
       data: {
         ...s.data,
         ...(nextGroups ? { travel_groups: nextGroups } : {}),
+        ...(deadlinePassed ? { read_only: true } : {}),
+      },
+    }))
+  }
+
+  function handleAccommodationChange(nextRequests, deadlinePassed) {
+    setState((s) => ({
+      ...s,
+      data: {
+        ...s.data,
+        ...(nextRequests ? { accommodation_requests: nextRequests } : {}),
         ...(deadlinePassed ? { read_only: true } : {}),
       },
     }))
@@ -297,6 +313,15 @@ export default function PortalPage() {
         travelGroups={travelGroups}
         readOnly={readOnly}
         onChange={handleTravelChange}
+      />
+
+      <PortalAccommodation
+        token={token}
+        persons={persons}
+        hotels={hotels}
+        requests={accommodationRequests}
+        readOnly={readOnly}
+        onChange={handleAccommodationChange}
       />
     </div>
   )
