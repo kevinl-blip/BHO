@@ -10,6 +10,7 @@ import { firstMissingRequired } from '../lib/personFields'
 import PortalTravel from '../components/PortalTravel'
 import PortalAccommodation from '../components/PortalAccommodation'
 import CollapsibleSection from '../components/CollapsibleSection'
+import { useEditScroll } from '../lib/useEditScroll'
 
 const ROLES = ['athlete', 'coach', 'official']
 
@@ -27,9 +28,11 @@ export default function PortalPage() {
   const [editingId, setEditingId] = useState(null)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState(null)
-  // Aufklappzustand der Portal-Abschnitte (Accordion), standardmäßig zu.
-  const [open, setOpen] = useState({ people: false, travel: false, accommodation: false })
-  const toggle = (key) => setOpen((o) => ({ ...o, [key]: !o[key] }))
+  // Echtes Accordion: höchstens ein Abschnitt offen. Öffnen eines Abschnitts
+  // schließt den vorherigen, sodass die Seite nie länger als ein Abschnitt ist.
+  const [openSection, setOpenSection] = useState(null)
+  const toggle = (key) => setOpenSection((cur) => (cur === key ? null : key))
+  const editRef = useEditScroll(editingId)
 
   const load = useCallback(async () => {
     setState({ loading: true, error: null, data: null })
@@ -203,7 +206,7 @@ export default function PortalPage() {
       <CollapsibleSection
         title="People"
         {...sectionStatus(persons.length, persons.length === 1 ? 'person' : 'people')}
-        open={open.people}
+        open={openSection === 'people'}
         onToggle={() => toggle('people')}
       >
         {persons.length === 0 && <p className="muted">No people added yet.</p>}
@@ -236,7 +239,7 @@ export default function PortalPage() {
         </ul>
 
         {!readOnly && (
-          <form onSubmit={handleSubmit} className="stack field-form">
+          <form ref={editRef} onSubmit={handleSubmit} className="stack field-form">
             <h4>{editingId ? 'Edit person' : 'Add person'}</h4>
             <div className="row">
               <label>
@@ -323,7 +326,7 @@ export default function PortalPage() {
       <CollapsibleSection
         title="Travel"
         {...sectionStatus(travelGroups.length, travelGroups.length === 1 ? 'group' : 'groups')}
-        open={open.travel}
+        open={openSection === 'travel'}
         onToggle={() => toggle('travel')}
       >
         <PortalTravel
@@ -339,7 +342,7 @@ export default function PortalPage() {
       <CollapsibleSection
         title="Accommodation"
         {...sectionStatus(accommodationRequests.length, accommodationRequests.length === 1 ? 'request' : 'requests')}
-        open={open.accommodation}
+        open={openSection === 'accommodation'}
         onToggle={() => toggle('accommodation')}
       >
         <PortalAccommodation

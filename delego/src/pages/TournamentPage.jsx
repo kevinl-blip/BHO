@@ -9,6 +9,7 @@ import TokenStaffManager from '../components/TokenStaffManager'
 import ArrivalBoard from '../components/ArrivalBoard'
 import HotelsManager from '../components/HotelsManager'
 import InventoryManager from '../components/InventoryManager'
+import { useEditScroll } from '../lib/useEditScroll'
 
 const emptyForm = {
   name: '',
@@ -58,6 +59,8 @@ export default function TournamentPage() {
     next.set('tab', key)
     setSearchParams(next, { replace: true })
   }
+
+  const delegationEditRef = useEditScroll(editingId)
 
   const personFields = Array.isArray(tournament?.settings?.person_fields)
     ? tournament.settings.person_fields
@@ -177,7 +180,6 @@ export default function TournamentPage() {
       notes: d.notes ?? '',
     })
     setError(null)
-    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
   }
 
   function resetForm() {
@@ -339,7 +341,7 @@ export default function TournamentPage() {
 
           <div className="card">
             <h3>{editingId ? 'Delegation bearbeiten' : 'Neue Delegation'}</h3>
-            <form onSubmit={handleSubmit} className="stack">
+            <form ref={delegationEditRef} onSubmit={handleSubmit} className="stack">
               <div className="row">
                 <label>
                   Name

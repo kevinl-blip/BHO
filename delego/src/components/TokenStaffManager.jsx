@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { useEditScroll } from '../lib/useEditScroll'
 
 // Wiederverwendbar für Fahrer (drivers) und Koordinatoren (coordinators) –
 // strukturell identisch: name, phone, active, notes, access_token mit Link.
@@ -16,6 +17,7 @@ export default function TokenStaffManager({ table, title, linkPath, tournamentId
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
   const [copiedId, setCopiedId] = useState(null)
+  const editRef = useEditScroll(editingId)
 
   function resetForm() {
     setForm(emptyForm)
@@ -117,7 +119,7 @@ export default function TokenStaffManager({ table, title, linkPath, tournamentId
         ))}
       </ul>
 
-      <form onSubmit={handleSubmit} className="stack field-form">
+      <form ref={editRef} onSubmit={handleSubmit} className="stack field-form">
         <h4>{editingId ? 'Bearbeiten' : 'Hinzufügen'}</h4>
         <div className="row">
           <label>

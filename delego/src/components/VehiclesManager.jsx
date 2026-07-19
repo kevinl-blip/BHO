@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { useEditScroll } from '../lib/useEditScroll'
 
 // Fahrzeuge eines Turniers verwalten (vehicles). Direkter Tabellenzugriff über
 // den authentifizierten Client; RLS veh_write erlaubt admin/staff.
@@ -9,6 +10,7 @@ export default function VehiclesManager({ tournamentId, vehicles, onChanged }) {
   const [editingId, setEditingId] = useState(null)
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
+  const editRef = useEditScroll(editingId)
 
   function resetForm() {
     setLabel('')
@@ -73,7 +75,7 @@ export default function VehiclesManager({ tournamentId, vehicles, onChanged }) {
         ))}
       </ul>
 
-      <form onSubmit={handleSubmit} className="stack field-form">
+      <form ref={editRef} onSubmit={handleSubmit} className="stack field-form">
         <h4>{editingId ? 'Fahrzeug bearbeiten' : 'Fahrzeug hinzufügen'}</h4>
         <div className="row">
           <label>

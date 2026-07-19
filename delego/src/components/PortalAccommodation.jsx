@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useEditScroll } from '../lib/useEditScroll'
 import {
   portalCreateAccommodation,
   portalDeleteAccommodation,
@@ -19,6 +20,7 @@ export default function PortalAccommodation({ token, persons, hotels, requests, 
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState(null)
   const [saving, setSaving] = useState(false)
+  const editRef = useEditScroll(editingId)
   const [error, setError] = useState(null)
 
   const personById = new Map(persons.map((p) => [p.id, `${p.last_name}, ${p.first_name}`]))
@@ -143,7 +145,7 @@ export default function PortalAccommodation({ token, persons, hotels, requests, 
       </ul>
 
       {!readOnly && (
-        <form onSubmit={handleSubmit} className="stack field-form">
+        <form ref={editRef} onSubmit={handleSubmit} className="stack field-form">
           <h4>{editingId ? 'Edit request' : 'Add request'}</h4>
           {persons.length === 0 && <p className="muted">Add people first, then request rooms for them.</p>}
           {hotels.length === 0 && <p className="muted">The organizer has not added any hotels yet.</p>}

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useEditScroll } from '../lib/useEditScroll'
 import {
   portalCreateTravelGroup,
   portalDeleteTravelGroup,
@@ -39,6 +40,7 @@ export default function PortalTravel({ token, persons, travelGroups, readOnly, o
   const [editingId, setEditingId] = useState(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
+  const editRef = useEditScroll(editingId)
 
   const personById = new Map(persons.map((p) => [p.id, p]))
   const arrivals = travelGroups.filter((g) => g.direction === 'arrival')
@@ -167,7 +169,7 @@ export default function PortalTravel({ token, persons, travelGroups, readOnly, o
       <ul className="item-list">{departures.map(renderGroup)}</ul>
 
       {!readOnly && (
-        <form onSubmit={handleSubmit} className="stack field-form">
+        <form ref={editRef} onSubmit={handleSubmit} className="stack field-form">
           <h4>{editingId ? 'Edit travel group' : 'Add travel group'}</h4>
           <div className="row">
             <label>
